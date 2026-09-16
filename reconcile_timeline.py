@@ -271,7 +271,7 @@ def build_events():
             "source": {
                 "inpi_id": "63e9593b8be6eb9f9d257ec7",
                 "page": 5,
-                "bbox": [0.0504, 0.0556, 0.9468, 0.0874],
+                "bbox": [0.0391, 0.0556, 0.9468, 0.0874],
                 "snippet": "L'Assemblée Générale autorise Monsieur Xavier AUMONT à céder 225 actions à Monsieur Michel CAPGRAS."
             }
         },
@@ -477,7 +477,7 @@ def build_events():
             "source": {
                 "inpi_id": "63e9593a8be6eb9f9d257ebe",
                 "page": 3,
-                "bbox": [0.1133, 0.3834, 0.8801, 0.4176],
+                "bbox": [0.1133, 0.3834, 0.8801, 0.4347],
                 "snippet": "le Président constate que le capital social est réduit de 150 861 euros pour être ramené de 368 102 euros à 217 241 euros et divisé en 217 241 actions de 1 euro de valeur nominale chacune."
             }
         },
@@ -950,11 +950,15 @@ NOTES = (
     "entender. (a) AMBIGUIDADE POR CONSTRUÇÃO: dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) "
     "citam trechos que aparecem duas vezes na mesma página; a bbox aponta a primeira ocorrência, e nenhum critério "
     "disponível escolhe entre as duas. Desvio medido: 0.3888 e 0.4034. É limite do dado, não tarefa pendente. "
-    "(b) IMPRECISÃO SEM AMBIGUIDADE: dois outros eventos (evt_2006-10-20_transfer_aumont_to_capgras e "
-    "evt_2017-02-21_cap_decrease_cancel_b) têm trecho que NÃO se repete na página, e ainda assim a caixa declarada "
-    "difere da reconstruída em 0.0113 e 0.0171 — cerca de uma linha de página. Aqui não há ambiguidade a resolver: há "
-    "uma imprecisão de cerca de uma linha que não foi corrigida e está declarada como tal. Medição reproduzível: "
-    "python main.py --siren 480489707 --benchmark results.json "
+    "(b) CAIXA DECLARADA QUE NÃO COBRIA A CITAÇÃO — corrigida, e a correção é de substância. Dois eventos "
+    "(evt_2006-10-20_transfer_aumont_to_capgras e evt_2017-02-21_cap_decrease_cancel_b) tinham trecho sem repetição "
+    "na página, mas a caixa declarada não cobria o próprio trecho: na primeira ela cortava o primeiro caractere da "
+    "linha ('L'Assemblée', x0 declarado 0.0504 contra 0.0391 reconstruído); na segunda deixava de fora a última linha "
+    "da citação ('nominale chacune.', y1 declarado 0.4176 contra 0.4347). Conferido nas duas imagens renderizadas, com "
+    "a caixa declarada e a reconstruída desenhadas sobre a página. Como o recorte é a prova visual da alegação, uma "
+    "caixa que não cobre a citação produz um relatório que não sustenta a própria frase. Corrigidas para os valores "
+    "reconstruídos; o benchmark passa a acusar 29/31 exatas, restando as duas ambiguidades do item (a). Medição "
+    "reproduzível: python main.py --siren 480489707 --benchmark results.json "
     "(5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança "
     "do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de "
     "'20/10/2006'; '200.0euros' em vez de '200.000 euros' (desvio de fator 1000) e '2o08' em vez de '2008'; "
