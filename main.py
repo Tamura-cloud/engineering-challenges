@@ -257,6 +257,16 @@ def _cmd_extract(
     return EXIT_OK
 
 
+def _report_label(results_path: Path, siren: str) -> str:
+    """Nome-base do relatório, derivado do ARQUIVO de entrada e não só da SIREN.
+
+    Duas leituras da mesma empresa — a conferida à mão e a proposta pelo modelo —
+    têm a mesma SIREN. Nomear pela SIREN fazia a segunda sobrescrever a primeira
+    em silêncio, que é o pior tipo de perda: sem erro, sem aviso, sem rastro.
+    """
+    return results_path.stem or siren
+
+
 def _cmd_report(results_path: Path, output: str | None) -> int:
     """Gera o HTML de verificação visual a partir de um results.json."""
     import json
@@ -268,7 +278,9 @@ def _cmd_report(results_path: Path, output: str | None) -> int:
     payload = json.loads(results_path.read_text(encoding="utf-8"))
     siren = str(payload.get("siren") or "desconhecido")
     destination = (
-        Path(output) if output else config.REPO_ROOT / "reports" / f"verificacao_{siren}.html"
+        Path(output)
+        if output
+        else config.REPO_ROOT / "reports" / f"verificacao_{_report_label(results_path, siren)}.html"
     )
     written = report_html.build_report(payload, destination)
     print(f"{len(payload.get('events') or [])} alegações renderizadas")
@@ -292,7 +304,9 @@ def _cmd_timeline(
     payload = json.loads(results_path.read_text(encoding="utf-8"))
     siren = str(payload.get("siren") or "desconhecido")
     destination = (
-        Path(output) if output else config.REPO_ROOT / "reports" / f"timeline_{siren}.html"
+        Path(output)
+        if output
+        else config.REPO_ROOT / "reports" / f"timeline_{_report_label(results_path, siren)}.html"
     )
     options: dict[str, object] = {"embed_images": embed_images}
     if margin is not None:

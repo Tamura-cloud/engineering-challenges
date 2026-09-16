@@ -53,8 +53,10 @@ python main.py --siren 480489707 --ocr-errors --benchmark results.json
 # Where does a phrase sit, in submittable coordinates?
 python main.py --siren 480489707 --ground "Le capital social est fixé à la somme de trente sept mille"
 
-# See the capital evolve: composition bar per state, entries/exits, cause of each state
-python main.py --timeline-html results.json --output reports/timeline_480489707.html
+# See the capital evolve: composition bar per state, and — beside each citation —
+# the crop of the actual page it was read from, so the claim shows its own proof.
+# Add --sem-imagens for the text-only version (29 KB instead of 2 MB).
+python main.py --timeline-html results.json
 ```
 `--benchmark` is the check that matters: it answers *"do the boxes point where you say they do?"* without trusting either the OCR or our own claims.
 
