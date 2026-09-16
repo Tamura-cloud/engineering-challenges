@@ -3,7 +3,7 @@
 **Subject Company:** ARCHEAN TECHNOLOGIES (SIREN `480489707`)  
 **Track:** Data / ML Engineer  
 **Candidate:** `Tamura-cloud`  
-**Detailed Dossier:** See [RELATORIO_TECNICO_PROJETO.md](RELATORIO_TECNICO_PROJETO.md) for the comprehensive 20-year technical breakdown and pedagogical guide.  
+**Detailed dossier & decision log:** [`docs/RELATORIO_TECNICO_PROJETO.md`](docs/RELATORIO_TECNICO_PROJETO.md) for the 20-year technical breakdown, and [`docs/DEVLOG_AI.md`](docs/DEVLOG_AI.md) for the findings that changed the course of the work.  
 **Walkthrough recording (≈3 min):** ⚠️ **_PENDING — paste the Loom link here before opening the PR_**
 
 ---
@@ -68,10 +68,10 @@ Nothing in `src/` is Archean-specific. Given a SIREN, the same code triages the 
 
 ```bash
 # Read a company's OCR with DeepSeek, propose events, then ground + verify them
-python main.py --siren 820561470 --extract --output results_pautet_llm.json
+python main.py --siren 820561470 --extract --output controls/results_pautet_llm.json
 
 # Same destination, but from events a human already wrote
-python main.py --events events/events_820561470.json --output results_820561470.json
+python main.py --events events/events_820561470.json --output controls/results_820561470.json
 ```
 
 **SARL PAUTET (SIREN 820561470)** is carried in this repository as a control case, because its cap table was read by hand first, boxes included. The timeline derived from the model's reading is **identical field by field to the hand-derived one** — 1 000 shares in 2016 and 15 000 in 2022, same holders, same dates — and both pass every invariant. The model emitted 2 events where the human emitted 5; both routes land on the same cap table. The raw model proposal is frozen to `events/events_820561470_candidate.json` so that the *unverified* reading can still be audited after the fact.
