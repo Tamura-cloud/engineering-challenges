@@ -81,11 +81,12 @@ Abaixo está a síntese de 20 anos de reconstituição da Archean Technologies c
 * **Aumento de Capital:** Emissão de 1.130 ações de 100 € em dinheiro (+113.000 €), elevando o capital para **150.000 €** (1.500 ações).
 * **Movimentação Societária:** Três investidores temporários (Malik Guellati, Christophe Leroux e Marielle Roujean) subscrevem ações e, na AGE de 22/07/2005 (efeito em 16/08/2005), transferem a totalidade de suas cotas para Antonio Blanco e Xavier Aumont.
 * **Cap Table Pós-Cessão:**
-  * Antonio BLANCO MARINA: 823 ações (54,87%)
-  * Xavier AUMONT: 617 ações (41,13%)
+  * Antonio BLANCO MARINA: 803 ações (53,53%)
+  * Xavier AUMONT: 637 ações (42,47%)
   * Franck GICQUEL: 60 ações (4,00%)
   * Total: 1.500 ações de 100 € = 150.000 €.
-  * ⚠️ **Contradição declarada:** a folha de presença certificada de 20/10/2006 (Ato 4, página 6), lida na imagem renderizada, traz **803 / 637** — não 823 / 617. As duas somam 1.500, então nenhum invariante de fechamento as distingue, e não é erro de OCR: os dois pares foram conferidos na imagem. A lista de subscrição do próprio Ato 4 (330 + 150 + 20 = 500 ações novas) só fecha com a base 803/637. A timeline mantém 823/617 em 2005-08-16 e **declara** a incoerência de 20 ações com o estado seguinte. Ver nota (1) do `results.json`.
+  * ⚠️ **Contradição entre fontes, resolvida por regra — não por escolha.** A ata do Ato 3 (2006-01-04, p. 6) dá **823 / 617**; a folha de presença certificada do Ato 4 (20/10/2006, p. 6), lida na imagem, traz **803 / 637**. As duas somam 1.500, então nenhum invariante de fechamento distingue — e não é erro de OCR. **Regra aplicada:** quando duas leituras fecham o mesmo invariante, adota-se aquela sob a qual a cadeia seguinte fecha com movimentos documentados. A lista de subscrição do Ato 4 (`Pour 330` Aumont, `Pour 150` Blanco, `Pour 20` Gicquel = 500 exatas) só fecha com a base 803/637. A timeline adota essa.
+  * **O que não se pode afirmar com os dados disponíveis:** *por que* as duas fontes diferem — se houve um trespasse de 20 ações no intervalo ou se o Ato 3 transcreveu errado o *registre*. Ver nota (1) do `results.json`.
 
 #### Estado 2: 2º Aumento de Capital e Entrada de Michel Capgras (20/10/2006 — Ato 4)
 * **Documento:** `acte_2007-02-20_63e9593b8be6eb9f9d257ec0.pdf` (Páginas 2 a 6).
@@ -142,7 +143,7 @@ O briefing enfatiza que não publica gabarito porque as verificações internas 
 2. **Ato 4 (Página 6): Folha de Presença vs. Ata do Ato 3 — 20 Ações de Divergência**
    * *Os Documentos:* A ata do Ato 3 (2006-01-04) dá a repartição pós-trespasse como **823** para Blanco e **617** para Aumont, invocando o *registre des mouvements de titres*. A folha de presença certificada do Ato 4 (20/10/2006), lida na imagem, traz **803** e **637** nas duas colunas. Ambos somam 1.500 com Gicquel.
    * *O Desempate:* A lista de subscrição do Ato 4 reserva as 500 ações novas em `Pour 330 actions` (Aumont), `Pour 150` (Blanco) e `Pour 20` (Gicquel) — 330+150+20 = 500 exato. Só a base 803/637 fecha com o estado posterior (803+150 = 953; 637+330−225 = 742).
-   * *Nossa Solução:* **Declarar, não escolher.** A timeline mantém o valor do ato de 2005-08-16 e registra a incoerência de 20 ações com o estado seguinte, nomeando as duas fontes. Não é erro de OCR — as duas foram conferidas na imagem.
+   * *Nossa Solução:* **A regra decide, não o analista.** Adota-se a leitura sob a qual a cadeia seguinte fecha com movimentos documentados — 803/637 — e o motivo da divergência entre as duas fontes fica declarado como não afirmável. Não é erro de OCR: os dois pares foram conferidos na imagem.
 3. **Ato 15 (Página 3): Erro Tipográfico no Artigo 6 dos Estatutos**
    * *O Documento:* O texto corrido do Artigo 6 menciona: *«le capital a été augmenté de 185 759 euros pour être porté à 400 000 euros»*.
    * *A Prova Algébrica:* Se o capital era 217.241 €, somar 185.759 € resultaria em 403.000 € e não 400.000 €. A 1ª Deliberação do mesmo ato aprova expressamente *«182 759 euros»*.
