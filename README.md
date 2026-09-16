@@ -15,13 +15,14 @@ This repository contains the complete historical reconstruction of the capital c
 ### Key Highlights:
 * **`results.json` Deliverable:** Located at repository root, fully compliant and validated against `challenges/actes/schema/results.schema.json`.
 * **22 Grounded Events:** Every corporate event carries strict provenance (`inpi_id`, `page`, normalized `bbox [x0, y0, x1, y1]`, and text `snippet`).
-* **6 Reconstructed Capital States:** From incorporation at **37.000 €** to the current stable capital of **400.000 €**, closed with 100% share-conservation consistency.
-* **47 of 48 invariant checks pass, and the failing one is the point.** `python main.py --audit results.json` reports **REPROVADO** and exits non-zero, on purpose. Invariant #5 (holder continuity) fails between 2006-10-20 and 2008-06-27, which is exactly where four individual shareholders leave the cap table without a naming *cédant* in any Archean act. An audit that returned green here would be the bug, not the feature — the gap is declared rather than smoothed over. See §5.
+* **7 Reconstructed Capital States:** From incorporation at **37.000 €** to the current stable capital of **400.000 €**, closed with 100% share-conservation consistency.
+* **62 of 63 invariant checks pass, and the failing one is the point.** `python main.py --audit results.json` reports **REPROVADO** and exits non-zero, on purpose. Invariant #5 (holder continuity) fails between 2006-10-20 and 2008-06-27, which is exactly where four individual shareholders leave the cap table without a naming *cédant* in any Archean act. An audit that returned green here would be the bug, not the feature — the gap is declared rather than smoothed over. See §5.
+* **Invariant 7 enforces the brief's own definition.** The brief defines `capital_timeline[]` as *"the state of the cap table after each of those events"*. Invariant #7 checks precisely that: every state's causes must exist and precede it, and every event date must have a state. It is the only check that links the two artefacts — and it is what surfaced a state dated `2005-05-17` whose own cited causes were all from `2005-08-16`.
 * **The Group Bonus (`group`):** Reconstructed corporate ownership proving that holding company **HADEAN (SIREN 499979540)** acquired and owns 100% of Archean Technologies.
-* **Provenance verified, not asserted:** all **22/22** submitted snippets were re-located inside the shipped OCR, and **18/22** reproduce the declared `bbox` to within 0.002. The remaining 4 are documented ambiguities, not silent guesses. Reproduce with `python main.py --siren 480489707 --benchmark results.json`.
+* **Provenance verified, not asserted:** all **23/23** submitted snippets were re-located inside the shipped OCR, and **19/23** reproduce the declared `bbox` to within 0.002. The remaining 4 are documented ambiguities, not silent guesses. Reproduce with `python main.py --siren 480489707 --benchmark results.json`.
 * **Contradictions found and declared:** three material discrepancies inside the acts themselves (Acts 3, 4 and 15), six OCR transcription errors on pages we actually cite — including a **factor-1000 misread** (`200.0euros` where the document reads `200.000 euros`) — and one share-allocation error *we made ourselves* and corrected against the scanned image. All are listed in `results.json.notes`.
 * **Zero External API Cost:** `results.json` is assembled by local Python and needs no paid endpoint — no network access is required to reproduce or verify the submitted artefact.
-* **How the timeline was built, stated plainly:** the six Archean states were **typed by hand** in `reconcile_timeline.py::build_timeline()` after reading the acts, then machine-checked. They are **not** derived from the `events` array. That distinction matters and §3 spells out what it costs. The derivation engine (`src/ledger.py`) is real and is used — but on the other companies, not on the submitted file.
+* **How the timeline was built, stated plainly:** the seven Archean states were **typed by hand** in `reconcile_timeline.py::build_timeline()` after reading the acts, then machine-checked. They are **not** derived from the `events` array. That distinction matters and §3 spells out what it costs. The derivation engine (`src/ledger.py`) is real and is used — but on the other companies, not on the submitted file.
 
 ---
 
@@ -36,12 +37,12 @@ pip install -r requirements.txt
 ```bash
 python reconcile_timeline.py
 ```
-Rebuilds `results.json` from the hand-assembled states in `reconcile_timeline.py`, re-checks the algebraic invariants across all six epochs, and validates the output against `challenges/actes/schema/results.schema.json`. Deterministic, offline, and requiring no credentials.
+Rebuilds `results.json` from the hand-assembled states in `reconcile_timeline.py`, re-checks the algebraic invariants across all seven epochs, and validates the output against `challenges/actes/schema/results.schema.json`. Deterministic, offline, and requiring no credentials.
 
 ### Verify what is claimed (no API key needed)
 ```bash
-# Six invariants + schema, against the submitted file
-# Expected: 47/48 and exit code 1. The single failure is invariant #5, the
+# Seven invariants + schema, against the submitted file
+# Expected: 62/63 and exit code 1. The single failure is invariant #5, the
 # declared 2008 gap — see §5. A green run here would mean the check is broken.
 python main.py --audit results.json
 
@@ -90,7 +91,7 @@ python quick_check.py --doc 4 --page 3 --bbox [0.0499, 0.1685, 0.9479, 0.2007]
 ## 3. Trade-offs Made
 
 1. **Hand-assembled timeline, machine-checked arithmetic.**
-   The six Archean states were **assembled by hand** in `reconcile_timeline.py::build_timeline()`: each holder, share count and percentage was read from the acts and typed in as a literal. They are **not** derived from the `events` array — the two are parallel hand-authored artifacts.
+   The seven Archean states were **assembled by hand** in `reconcile_timeline.py::build_timeline()`: each holder, share count and percentage was read from the acts and typed in as a literal. They are **not** derived from the `events` array — the two are parallel hand-authored artifacts.
 
    That trade-off has a cost, and it should be named rather than hidden: **two hand-authored artifacts can drift apart, and nothing in the build catches it.** The invariants check the timeline's internal arithmetic, not that it follows from the events. What they *do* catch is real — share closure, capital identity, percentage closure, flow conservation, date consistency — and they are what surfaced the 803/637 transposition in §4.
 
@@ -112,7 +113,7 @@ The brief asks for this section by name and asks that the tools be named. What w
   * Automated JSON schema validation using `jsonschema`;
   * Scanning and cataloging the 17 legal acts to index filing decisions and dates.
 * **What was checked and verified by the candidate:**
-  * The algebraic reconciliation of share counts across all six epochs, re-run end to end after every edit;
+  * The algebraic reconciliation of share counts across all seven epochs, re-run end to end after every edit;
   * The three material discrepancies in Acts 3, 4 and 15, each confirmed against the **rendered page image**, not against the OCR text — the OCR is the input under suspicion, not the source of truth;
   * The 2005 share allocation, where our own ledger read `803/637` while the document says `823/617`. The OCR was right and we were wrong: a digit transposition that only surfaced when the snippet↔bbox cross-check was pointed at the cap table;
   * Folder organisation, and confirming that no secret, token or `.env` file is committed.

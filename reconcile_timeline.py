@@ -108,6 +108,32 @@ def build_events():
             }
         },
 
+        # 2b. Entrada dos subscritores das 1 130 ações novas — EVENTO-CONSEQUÊNCIA.
+        #
+        # event_codes.json diz que SHAREHOLDER_ENTRY captura a consequência (X é
+        # agora associado) e que o mecanismo é o evento que co-dispara: aqui, o
+        # próprio aumento que criou as 1 130 ações. A spec acrescenta que essas
+        # consequências são "derived by the snapshot folder and emitted as
+        # SHAREHOLDER_ENTRY / SHAREHOLDER_END events at projection time". Este é
+        # um deles, e por isso compartilha a fonte com o aumento: a MESMA frase do
+        # ato cria as 1 130 ações. Quem as deteve é o ato de 2006-01-04 (página 6),
+        # que faz o trespasse de "la totalité des actions détenues" por eles.
+        {
+            "event_id": "evt_2005-05-17_entry_souscripteurs",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2005-05-17",
+            "payload": {
+                "holder_name": "Malik GUELLATI, Christophe LEROUX, Marielle ROUJEAN",
+                "shares": 1130
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec4",
+                "page": 2,
+                "bbox": [0.1216, 0.7672, 0.8896, 0.8170],
+                "snippet": "constate la réalisation définitive de l'augmentation de capital de 113 000 € par la création de 1 130 actions nouvelles de numéraire de 100 euros , pour porter le capital à 150 000 €."
+            }
+        },
+
         # 3. Cessão das ações dos investidores Guellati/Leroux/Roujean (2005-08-16 / AGE 2005-07-22, Doc 3)
         {
             "event_id": "evt_2005-08-16_transfer_exit_investors",
@@ -423,7 +449,62 @@ def build_timeline():
             ]
         },
 
-        # Estado 1: após o trespasse de 16/08/2005 (capital em 150.000 € desde 17/05)
+        # Estado: realização do primeiro aumento de capital (150.000 €)
+        #
+        # O ato de 17/05/2005 (inpi_id 63e9593b8be6eb9f9d257ec4, página 2) constata
+        # "la réalisation définitive de l'augmentation de capital de 113 000 € par
+        # la création de 1 130 actions nouvelles de numéraire de 100 euros, pour
+        # porter le capital à 150 000 €", dividido em 1 500 ações de 100 €.
+        #
+        # Os três subscritores das 1 130 aparecem AGRUPADOS numa única linha, e não
+        # por descuido: os atos provam que foram eles que as detiveram (o trespasse
+        # de 16/08/2005 versa sobre "la totalité des actions détenues" por eles, e a
+        # repartição 823/617/60 só fecha com +668 e +462 sobre os 155/155 iniciais,
+        # que é 1 130), mas não documentam a divisão individual entre os três. O
+        # agregado é o que está provado; a divisão está declarada como não
+        # documentada no item (7) das notas.
+        {
+            "as_of": "2005-05-17",
+            "capital_eur": 150000.0,
+            "shares_total": 1500,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Xavier AUMONT",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 155,
+                    "pct": 10.33
+                },
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 155,
+                    "pct": 10.33
+                },
+                {
+                    "name": "Franck GICQUEL",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 60,
+                    "pct": 4.00
+                },
+                {
+                    "name": "Malik GUELLATI, Christophe LEROUX, Marielle ROUJEAN",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 1130,
+                    "pct": 75.33
+                }
+            ],
+            "caused_by": [
+                "evt_2005-05-17_cap_increase_150k",
+                "evt_2005-05-17_entry_souscripteurs"
+            ]
+        },
+
+        # Estado: após o trespasse de 16/08/2005
         #
         # Estava datado 2005-05-17, mas as causas listadas abaixo são todas de
         # 2005-08-16 — o estado contradizia a própria lista de eventos. A composição
@@ -458,7 +539,6 @@ def build_timeline():
                 }
             ],
             "caused_by": [
-                "evt_2005-05-17_cap_increase_150k",
                 "evt_2005-08-16_transfer_exit_investors",
                 "evt_2005-08-16_exit_guellati",
                 "evt_2005-08-16_exit_leroux",
@@ -641,19 +721,26 @@ NOTES = (
     "(GUELLATI, LEROUX, ROUJEAN) que não entram no quadro societário em nenhum evento. Derivar a timeline dos "
     "eventos exigiria um evento de alocação por aumento — é o próximo passo, não uma afirmação que se possa "
     "fazer hoje. "
-    "(7) DATA CORRIGIDA, e a lacuna que a correção expõe. O estado que esta timeline rotulava como 2005-05-17 "
-    "trazia, ele mesmo, os eventos de 2005-08-16 entre as suas causas — o estado contradizia a própria lista "
-    "de eventos que o gerou. A composição 823/617/60 é a 'nouvelle répartition' do trespasse, e o ato de "
+    "(7) DATA CORRIGIDA, e a lacuna que restou. O estado que esta timeline rotulava como 2005-05-17 trazia, "
+    "ele mesmo, os eventos de 2005-08-16 entre as suas causas — o estado contradizia a própria lista de "
+    "eventos que o gerou. A composição 823/617/60 é a 'nouvelle répartition' do trespasse, e o ato de "
     "2006-01-04 (inpi_id 63e9593b8be6eb9f9d257ec2, página 6) é explícito: 'au terme des ordres de mouvement "
     "à émettre en date du 16 août 2005, la nouvelle répartition suivante entre les associés'. O estado passou "
-    "a ser datado 2005-08-16. O mesmo parágrafo acrescenta que essa repartição 'est conforme au registre des "
-    "mouvements de titres et l'emporte sur celle indiquée dans le protocole, qui contient une erreur' — é a "
-    "origem documental do 803/637 do item (1): o erro estava no protocolo de cessão, e o registre de "
-    "movimentações o corrige para 823/617. Consequência da correção: a composição intermediária de "
-    "2005-05-17 (depois do aumento para 150.000 €, antes do trespasse) NÃO é emitida como estado. O ato prova "
-    "que os três cedentes detinham 'la totalité' das suas ações e que o total em circulação era de 1.500 "
-    "ações (feuille de présence, página 5), mas não documenta a divisão das 1.130 ações entre Malik "
-    "GUELLATI, Christophe LEROUX e Marielle ROUJEAN individualmente — e um número sem documento não entra."
+    "a ser datado 2005-08-16, e o estado de 2005-05-17 — que faltava — foi emitido a partir do próprio ato do "
+    "aumento (inpi_id 63e9593b8be6eb9f9d257ec4, página 2): 'la réalisation définitive de l'augmentation de "
+    "capital de 113 000 € par la création de 1 130 actions nouvelles de numéraire de 100 euros, pour porter le "
+    "capital à 150 000 €'. O mesmo parágrafo do ato de 2006-01-04 acrescenta que a repartição 'est conforme au "
+    "registre des mouvements de titres et l'emporte sur celle indiquée dans le protocole, qui contient une "
+    "erreur' — é a origem documental do 803/637 do item (1): o erro estava no protocolo de cessão, e o "
+    "registre de movimentações o corrige para 823/617. LACUNA REMANESCENTE: os três subscritores das 1 130 "
+    "ações novas aparecem AGRUPADOS numa única linha do estado de 2005-05-17. O total de 1 130 está "
+    "documentado, e que foram eles que as detiveram está provado pela repartição de 16/08 (+668 sobre os 155 "
+    "de BLANCO e +462 sobre os 155 de AUMONT = 1 130); o que os atos NÃO dizem é a divisão individual entre "
+    "Malik GUELLATI, Christophe LEROUX e Marielle ROUJEAN. O agregado é o que se pode afirmar; a divisão, não."
+    " Por consequência, a ENTRADA dos três é emitida como evento-consequência (evt_2005-05-17_entry_souscripteurs), "
+    "com a mesma fonte do aumento — a spec do próprio desafio define que ações de consequência assim são "
+    "derivadas no momento da projeção, não lidas: o ato não diz 'GUELLATI entrou', diz que 1.130 ações novas "
+    "foram criadas."
 )
 
 

@@ -211,6 +211,57 @@ def check_event_vs_deposit(
     return checks
 
 
+def check_state_vs_events(
+    timeline: Sequence[dict[str, Any]],
+    events: Sequence[dict[str, Any]],
+) -> list[Check]:
+    """Cobra a frase do BRIEF: "the state of the cap table after each of those
+    events". O estado tem de ser *posterior* às suas causas, as causas têm de
+    existir, e todo evento tem de desembocar num estado.
+
+    É o único invariante que liga os dois artefatos; os outros conferem a
+    aritmética de cada um isoladamente. Por isso deixaram passar um estado
+    datado de 2005-05-17 cujas causas eram todas de 2005-08-16 — cada artefato
+    fechava sozinho, e nada comparava os dois.
+    """
+    checks: list[Check] = []
+    by_id = {str(event.get("event_id")): event for event in events if event.get("event_id")}
+
+    for state in timeline:
+        as_of = str(state.get("as_of") or "?")
+        causes = [str(cid) for cid in state.get("caused_by") or []]
+        problems: list[str] = []
+        for cause in causes:
+            event = by_id.get(cause)
+            if event is None:
+                problems.append(f"{cause} não existe em events[]")
+                continue
+            date = str(event.get("event_date") or "")
+            if date and date > as_of:
+                problems.append(f"{cause} é de {date}, posterior ao estado")
+        detail = (
+            "; ".join(problems)
+            if problems
+            else f"{len(causes)} causa(s) existem e antecedem o estado"
+        )
+        checks.append(Check("Invariante 7 (Estado←Eventos)", as_of, not problems, detail))
+
+    # Cobertura: todo evento precisa de um estado com a sua data de efeito.
+    state_dates = {str(state.get("as_of")) for state in timeline}
+    event_dates = {str(event.get("event_date")) for event in events if event.get("event_date")}
+    orphan_dates = sorted(event_dates - state_dates)
+    detail = (
+        f"datas de efeito sem estado: {orphan_dates}"
+        if orphan_dates
+        else f"{len(event_dates)} datas de efeito, todas com estado"
+    )
+    checks.append(
+        Check("Invariante 7 (Estado←Eventos)", "cobertura", not orphan_dates, detail)
+    )
+
+    return checks
+
+
 def verify_algebraic_invariants(
     timeline: Sequence[dict[str, Any]],
 ) -> tuple[bool, list[Check]]:
@@ -279,6 +330,7 @@ def audit(payload: dict[str, Any]) -> tuple[bool, list[Check], list[str]]:
     _, checks = verify_algebraic_invariants(timeline)
     checks.extend(check_holder_continuity(timeline, events))
     checks.extend(check_event_vs_deposit(payload))
+    checks.extend(check_state_vs_events(timeline, events))
 
     algebra_ok = all(check.passed for check in checks)
     schema_ok, errors = validate_schema(payload, siren=str(payload.get("siren") or SUBJECT_SIREN))
