@@ -13,7 +13,8 @@ aritmética. Digitar um total passa a ser impossível.
 
 Convenções de ``payload`` por código::
 
-    CAPITAL_INCREASE      capital_after_eur, nominal_eur?, allocation?{nome: títulos}
+    CAPITAL_INCREASE      capital_after_eur, nominal_eur?,
+                          allocation?{nome: títulos NOVOS atribuídos} — somado ao saldo
     CAPITAL_DECREASE      capital_after_eur, cancelled_shares?
     SHAREHOLDER_ENTRY     holder_name, shares?
     SHAREHOLDER_END       holder_name
@@ -68,13 +69,21 @@ def _apply(state: _State, event: dict[str, Any]) -> None:
         if nominal:
             state.nominal = nominal
             state.dirty = True
+        # `allocation` são os títulos NOVOS atribuídos a cada titular (delta),
+        # não a composição final: uma incorporação de reservas cria títulos
+        # novos e deixa os antigos intactos. Logo, soma-se ao saldo — nunca
+        # sobrescreve. Ver a nota de semântica no SYSTEM_PROMPT do extrator.
         allocation = payload.get("allocation")
         if isinstance(allocation, dict):
+            attributed = False
             for name, shares in allocation.items():
                 value = _number(shares)
                 if value is not None:
-                    state.holders[str(name)] = value
-            state.dirty = True
+                    key = str(name)
+                    state.holders[key] = state.holders.get(key, 0.0) + value
+                    attributed = True
+            if attributed:
+                state.dirty = True
 
     elif code == "CAPITAL_DECREASE":
         after = _number(payload.get("capital_after_eur"))

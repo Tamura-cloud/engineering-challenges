@@ -42,8 +42,20 @@ class Dossier:
 
 
 def build(spec_path: Path, min_score: float = 0.60, scan_ocr: bool = True) -> Dossier:
-    """Monta o dossiê de uma empresa a partir do arquivo de eventos."""
-    spec = events_file.load_events_file(spec_path)
+    """Monta o dossiê a partir de um arquivo de eventos."""
+    return build_from_spec(events_file.load_events_file(spec_path), min_score, scan_ocr)
+
+
+def build_from_spec(
+    spec: dict[str, Any], min_score: float = 0.60, scan_ocr: bool = True
+) -> Dossier:
+    """Monta o dossiê a partir de uma especificação já em memória.
+
+    Serve tanto ao arquivo escrito por quem leu quanto à saída do extrator por
+    LLM. **Os dois passam pelo mesmo portão:** uma citação proposta pelo modelo
+    que não exista literalmente no OCR é rejeitada aqui, exatamente como seria
+    se uma pessoa a tivesse escrito.
+    """
     anchored = events_file.anchor(spec, min_score=min_score)
 
     timeline = ledger.build_timeline(anchored.events)

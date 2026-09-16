@@ -32,6 +32,7 @@ from src import (
     config,
     dossier,
     events_file,
+    extractor_llm,
     grounding,
     ocr_audit,
     pipeline,
@@ -78,6 +79,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--report-html",
         metavar="RESULTS",
         help="gera o HTML de verificação visual (imagem + caixa + alegação) de um results.json",
+    )
+    parser.add_argument(
+        "--extract",
+        action="store_true",
+        help="lê o OCR de --siren pela API, propõe os eventos e gera o results_<siren>.json",
     )
     parser.add_argument(
         "--ocr-errors",
@@ -162,6 +168,74 @@ def _cmd_triage(siren: str, kind: str, min_score: int) -> int:
             f"{str(row['doc_id']):<26} {str(row['deposit_date']):<11} "
             f"{pages:>5} {selected:>4}  {str(row['decision'] or '')[:40]}{note}"
         )
+    return EXIT_OK
+
+
+def _cmd_extract(
+    siren: str,
+    output: str | None,
+    kind: str,
+    min_page_score: int,
+    model: str | None,
+    min_score: float,
+) -> int:
+    """OCR -> API -> eventos candidatos -> results_<siren>.json.
+
+    O modelo propõe as alegações; o grounding, o ledger, os invariantes e o
+    schema fazem o resto. Nada que o modelo devolva entra sem passar por lá —
+    e a proposta crua fica congelada em disco para ser auditada depois.
+    """
+    import json
+
+    if not config.has_api_key():
+        print(
+            "ERRO: DEEPSEEK_API_KEY não definida.\n"
+            f"Crie {config.REPO_ROOT / '.env'} e preencha DEEPSEEK_API_KEY=<chave>.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    documents = [doc for doc in list_documents(siren, kind) if doc.has_ocr]
+    if not documents:
+        print(f"nenhum documento com OCR para a SIREN {siren}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    page_map = pipeline.build_page_map(documents, min_page_score)
+    total_pages = sum(len(pages) for pages in page_map.values())
+    print(f"{len(documents)} documentos com OCR, {total_pages} páginas enviadas à API")
+
+    extracted, notes = extractor_llm.extract_events(
+        documents, page_map=page_map, model=model or config.DEEPSEEK_MODEL
+    )
+    print(f"o modelo propôs {len(extracted)} eventos")
+    for note in notes:
+        print(f"  aviso: {note}")
+
+    spec = events_file.from_extracted(siren, extracted, kind=kind)
+    candidate = config.REPO_ROOT / "events" / f"events_{siren}_candidate.json"
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text(
+        json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    print(f"proposta congelada em: {candidate}")
+
+    outcome = dossier.build_from_spec(spec, min_score=min_score)
+    print()
+    print(events_file.render_report(outcome.anchored))
+    print()
+    print(dossier.render(outcome))
+
+    if not outcome.anchored.events:
+        print("\nnenhum evento ancorado — nada a escrever.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    destination = Path(output) if output else config.REPO_ROOT / f"results_{siren}.json"
+    if destination.resolve() == config.RESULTS_PATH.resolve():
+        print("\nRECUSADO: o destino é o artefato de entrega.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    written = dossier.write(outcome.payload, destination)
+    print(f"\nArquivo escrito em: {written}")
     return EXIT_OK
 
 
@@ -296,6 +370,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report_html:
         return _cmd_report(Path(args.report_html), args.output)
+
+    if args.extract:
+        if not args.siren:
+            parser.error("--extract exige --siren")
+        return _cmd_extract(
+            args.siren,
+            args.output,
+            args.kind,
+            args.min_page_score,
+            args.model,
+            args.ground_min_score,
+        )
 
     if args.events:
         return _cmd_events(Path(args.events), args.output, args.ground_min_score)

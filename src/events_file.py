@@ -77,6 +77,36 @@ class Anchored:
         ]
 
 
+def from_extracted(
+    siren: str,
+    extracted: Sequence[Any],
+    denomination: str = "",
+    kind: str = "actes",
+) -> dict[str, Any]:
+    """Converte eventos propostos por LLM no formato do arquivo de eventos.
+
+    A conversão é deliberadamente burra: o modelo entrega código, data, payload,
+    documento, página e citação — e nada mais. Coordenada, total e percentual
+    continuam vindo do código, não do modelo.
+    """
+    events: list[dict[str, Any]] = []
+    for order, item in enumerate(extracted, start=1):
+        events.append(
+            {
+                "event_id": f"llm_{order:03d}_{item.event_code.lower()}",
+                "event_code": item.event_code,
+                "event_date": item.event_date,
+                "payload": dict(item.payload or {}),
+                "evidence": {
+                    "doc_id": item.doc_id,
+                    "page": item.page,
+                    "snippet": item.quote_snippet,
+                },
+            }
+        )
+    return {"siren": siren, "denomination": denomination, "kind": kind, "events": events}
+
+
 def load_events_file(path: Path) -> dict[str, Any]:
     """Lê o arquivo de eventos escrito por quem leu os documentos."""
     payload = json.loads(path.read_text(encoding="utf-8"))
