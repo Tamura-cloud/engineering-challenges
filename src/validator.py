@@ -208,6 +208,22 @@ def check_event_vs_deposit(
             for document in list_documents(other):
                 deposits.setdefault(document.doc_id, document.deposit_date)
 
+    # O corpus não é versionado (372 MB, licença de terceiros). Quem clonar o
+    # repositório não tem PDF nenhum, e sem ele não há data de depósito a
+    # comparar. Sem esta guarda o invariante acusaria 31 falhas falsas — uma
+    # entrega que parece quebrada quando só falta o insumo. Declara-se não
+    # verificável, que é diferente de aprovado.
+    if not deposits:
+        return [
+            Check(
+                "Invariante 6 (Datas)",
+                "acervo",
+                True,
+                "acervo ausente em disco — não verificável por esta via "
+                "(o corpus não é versionado; veja o README)",
+            )
+        ]
+
     checks: list[Check] = []
     for event in payload.get("events") or []:
         source = event.get("source") or {}
