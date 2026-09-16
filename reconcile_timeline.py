@@ -423,9 +423,14 @@ def build_timeline():
             ]
         },
 
-        # Estado 1: Após primeiro aumento de capital (150.000 €)
+        # Estado 1: após o trespasse de 16/08/2005 (capital em 150.000 € desde 17/05)
+        #
+        # Estava datado 2005-05-17, mas as causas listadas abaixo são todas de
+        # 2005-08-16 — o estado contradizia a própria lista de eventos. A composição
+        # 823/617/60 é a "nouvelle répartition" que o trespasse de 16/08/2005 produz
+        # (ato de 2006-01-04, inpi_id 63e9593b8be6eb9f9d257ec2, página 6).
         {
-            "as_of": "2005-05-17",
+            "as_of": "2005-08-16",
             "capital_eur": 150000.0,
             "shares_total": 1500,
             "nominal_eur": 100.0,
@@ -635,7 +640,20 @@ NOTES = (
     "alocação de cotas de cada aumento intermediário, e o trespasse de 2005-08-16 nomeia cedentes "
     "(GUELLATI, LEROUX, ROUJEAN) que não entram no quadro societário em nenhum evento. Derivar a timeline dos "
     "eventos exigiria um evento de alocação por aumento — é o próximo passo, não uma afirmação que se possa "
-    "fazer hoje."
+    "fazer hoje. "
+    "(7) DATA CORRIGIDA, e a lacuna que a correção expõe. O estado que esta timeline rotulava como 2005-05-17 "
+    "trazia, ele mesmo, os eventos de 2005-08-16 entre as suas causas — o estado contradizia a própria lista "
+    "de eventos que o gerou. A composição 823/617/60 é a 'nouvelle répartition' do trespasse, e o ato de "
+    "2006-01-04 (inpi_id 63e9593b8be6eb9f9d257ec2, página 6) é explícito: 'au terme des ordres de mouvement "
+    "à émettre en date du 16 août 2005, la nouvelle répartition suivante entre les associés'. O estado passou "
+    "a ser datado 2005-08-16. O mesmo parágrafo acrescenta que essa repartição 'est conforme au registre des "
+    "mouvements de titres et l'emporte sur celle indiquée dans le protocole, qui contient une erreur' — é a "
+    "origem documental do 803/637 do item (1): o erro estava no protocolo de cessão, e o registre de "
+    "movimentações o corrige para 823/617. Consequência da correção: a composição intermediária de "
+    "2005-05-17 (depois do aumento para 150.000 €, antes do trespasse) NÃO é emitida como estado. O ato prova "
+    "que os três cedentes detinham 'la totalité' das suas ações e que o total em circulação era de 1.500 "
+    "ações (feuille de présence, página 5), mas não documenta a divisão das 1.130 ações entre Malik "
+    "GUELLATI, Christophe LEROUX e Marielle ROUJEAN individualmente — e um número sem documento não entra."
 )
 
 
