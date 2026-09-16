@@ -607,10 +607,13 @@ NOTES = (
     "(1) A cap table de 2005-05-17 registrava 803/637 ações para Blanco/Aumont por transposição de dígitos. "
     "O documento — répartition do ato de 2006-01-04, inpi_id 63e9593b8be6eb9f9d257ec2, página 6 — diz 823 ações "
     "para Antonio BLANCO e 617 para Xavier AUMONT, confirmado por leitura direta da imagem renderizada a 300 dpi. "
-    "(2) Entre 2006-10-20 e 2008-06-27 os sócios pessoa física (Blanco, Aumont, Gicquel, Capgras) deixam a cap table "
-    "sem evento de saída explícito. A aquisição pela HADEAN é inferida do termo 'Associée Unique' no ato de 2008-07-15 "
-    "(inpi_id 63e9593b8be6eb9f9d257ec3, página 1), que não nomeia os cedentes; a reconstrução por diferença é legítima, "
-    "mas a data exata da cessão não está documentada. "
+    "(2) As saídas dos sócios pessoa física em 2008 NÃO são indocumentadas — elas estavam fora da pasta da Archean. "
+    "Os atos da própria HADEAN registram os aportes: Xavier AUMONT contribuiu 742 ações da ARCHEAN, Franck GICQUEL 80 "
+    "(inpi_id 63f0a89c7a07a2434c069135, páginas 5 e 6, na constituição da HADEAN em 2007-09-18) e Michel CAPGRAS 225 "
+    "(inpi_id 63f0a89c7a07a2434c069136, página 3, em 2008-04-30). As três contagens coincidem exatamente com o estado de "
+    "2006-10-20 desta timeline. É o caso que o brief antecipa: a relação não aparece nos documentos da própria Archean e "
+    "exige ir olhar a controladora. Resta uma lacuna estreita e nomeada: as 953 ações de Antonio BLANCO MARINA não "
+    "aparecem em nenhum ato da HADEAN presente no acervo. "
     "(3) O artigo 6 dos estatutos anexos ao ato de 2018 grafa '185 759 euros' onde a 1ª Resolução do mesmo ato prova "
     "182 759 euros (217.241 + 182.759 = 400.000): erro material do escrivão. "
     "(4) Dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) citam trechos que aparecem duas vezes "
@@ -644,6 +647,21 @@ def build_group():
                 "name": "ARCHEAN INTERNATIONAL",
                 "siren": None,
                 "resolved": False
+            },
+            {
+                "name": "Xavier AUMONT",
+                "siren": None,
+                "resolved": False
+            },
+            {
+                "name": "Franck GICQUEL",
+                "siren": None,
+                "resolved": False
+            },
+            {
+                "name": "Michel CAPGRAS",
+                "siren": None,
+                "resolved": False
             }
         ],
         "edges": [
@@ -671,6 +689,48 @@ def build_group():
                     "page": 7,
                     "bbox": [0.1044, 0.1446, 0.8701, 0.1758],
                     "snippet": "accord entre ARCHEAN TECHNOLOGIES et ARCHEAN INTERNATIONAL"
+                }
+            },
+            {
+                "from": "Xavier AUMONT",
+                "to": "HADEAN",
+                "relation": "share_contribution",
+                "pct": None,
+                "as_of": "2007-09-18",
+                "shares_archean": 742,
+                "source": {
+                    "inpi_id": "63f0a89c7a07a2434c069135",
+                    "page": 5,
+                    "bbox": [0.1195, 0.7397, 0.8855, 0.7579],
+                    "snippet": "Monsieur Xavier AUMONT fait apport de la pleine propriété des 742 (sept cent"
+                }
+            },
+            {
+                "from": "Franck GICQUEL",
+                "to": "HADEAN",
+                "relation": "share_contribution",
+                "pct": None,
+                "as_of": "2007-09-18",
+                "shares_archean": 80,
+                "source": {
+                    "inpi_id": "63f0a89c7a07a2434c069135",
+                    "page": 6,
+                    "bbox": [0.1208, 0.3261, 0.8841, 0.3428],
+                    "snippet": "Monsieur Franck GICQUEL fait apport de la pleine propriété des QUATRE VINGT"
+                }
+            },
+            {
+                "from": "Michel CAPGRAS",
+                "to": "HADEAN",
+                "relation": "share_contribution",
+                "pct": None,
+                "as_of": "2008-04-30",
+                "shares_archean": 225,
+                "source": {
+                    "inpi_id": "63f0a89c7a07a2434c069136",
+                    "page": 3,
+                    "bbox": [0.1555, 0.4931, 0.8765, 0.5093],
+                    "snippet": "Monsieur Michel CAPGRAS propose de faire apport à la SAS HADEAN de 225 actions"
                 }
             }
         ]

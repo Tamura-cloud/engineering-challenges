@@ -668,6 +668,21 @@
         "name": "ARCHEAN INTERNATIONAL",
         "siren": null,
         "resolved": false
+      },
+      {
+        "name": "Xavier AUMONT",
+        "siren": null,
+        "resolved": false
+      },
+      {
+        "name": "Franck GICQUEL",
+        "siren": null,
+        "resolved": false
+      },
+      {
+        "name": "Michel CAPGRAS",
+        "siren": null,
+        "resolved": false
       }
     ],
     "edges": [
@@ -706,8 +721,65 @@
           ],
           "snippet": "accord entre ARCHEAN TECHNOLOGIES et ARCHEAN INTERNATIONAL"
         }
+      },
+      {
+        "from": "Xavier AUMONT",
+        "to": "HADEAN",
+        "relation": "share_contribution",
+        "pct": null,
+        "as_of": "2007-09-18",
+        "shares_archean": 742,
+        "source": {
+          "inpi_id": "63f0a89c7a07a2434c069135",
+          "page": 5,
+          "bbox": [
+            0.1195,
+            0.7397,
+            0.8855,
+            0.7579
+          ],
+          "snippet": "Monsieur Xavier AUMONT fait apport de la pleine propriété des 742 (sept cent"
+        }
+      },
+      {
+        "from": "Franck GICQUEL",
+        "to": "HADEAN",
+        "relation": "share_contribution",
+        "pct": null,
+        "as_of": "2007-09-18",
+        "shares_archean": 80,
+        "source": {
+          "inpi_id": "63f0a89c7a07a2434c069135",
+          "page": 6,
+          "bbox": [
+            0.1208,
+            0.3261,
+            0.8841,
+            0.3428
+          ],
+          "snippet": "Monsieur Franck GICQUEL fait apport de la pleine propriété des QUATRE VINGT"
+        }
+      },
+      {
+        "from": "Michel CAPGRAS",
+        "to": "HADEAN",
+        "relation": "share_contribution",
+        "pct": null,
+        "as_of": "2008-04-30",
+        "shares_archean": 225,
+        "source": {
+          "inpi_id": "63f0a89c7a07a2434c069136",
+          "page": 3,
+          "bbox": [
+            0.1555,
+            0.4931,
+            0.8765,
+            0.5093
+          ],
+          "snippet": "Monsieur Michel CAPGRAS propose de faire apport à la SAS HADEAN de 225 actions"
+        }
       }
     ]
   },
-  "notes": "Lacunas e contradições declaradas de propósito (o BRIEF pede o que não foi resolvido). (1) A cap table de 2005-05-17 registrava 803/637 ações para Blanco/Aumont por transposição de dígitos. O documento — répartition do ato de 2006-01-04, inpi_id 63e9593b8be6eb9f9d257ec2, página 6 — diz 823 ações para Antonio BLANCO e 617 para Xavier AUMONT, confirmado por leitura direta da imagem renderizada a 300 dpi. (2) Entre 2006-10-20 e 2008-06-27 os sócios pessoa física (Blanco, Aumont, Gicquel, Capgras) deixam a cap table sem evento de saída explícito. A aquisição pela HADEAN é inferida do termo 'Associée Unique' no ato de 2008-07-15 (inpi_id 63e9593b8be6eb9f9d257ec3, página 1), que não nomeia os cedentes; a reconstrução por diferença é legítima, mas a data exata da cessão não está documentada. (3) O artigo 6 dos estatutos anexos ao ato de 2018 grafa '185 759 euros' onde a 1ª Resolução do mesmo ato prova 182 759 euros (217.241 + 182.759 = 400.000): erro material do escrivão. (4) Dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) citam trechos que aparecem duas vezes na mesma página; a bbox aponta a primeira ocorrência e é ambígua por construção. (5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de '20/10/2006'; '200.0euros' em vez de '200.000 euros' (desvio de fator 1000) e '2o08' em vez de '2008'; '(82ooo)' em vez de '(82000)'. Os snippets submetidos usam os valores corretos, conferidos contra a imagem renderizada do PDF — o OCR é entrada, não fonte de verdade. Auditoria reproduzível com: python main.py --siren 480489707 --ocr-errors --benchmark results.json"
+  "notes": "Lacunas e contradições declaradas de propósito (o BRIEF pede o que não foi resolvido). (1) A cap table de 2005-05-17 registrava 803/637 ações para Blanco/Aumont por transposição de dígitos. O documento — répartition do ato de 2006-01-04, inpi_id 63e9593b8be6eb9f9d257ec2, página 6 — diz 823 ações para Antonio BLANCO e 617 para Xavier AUMONT, confirmado por leitura direta da imagem renderizada a 300 dpi. (2) As saídas dos sócios pessoa física em 2008 NÃO são indocumentadas — elas estavam fora da pasta da Archean. Os atos da própria HADEAN registram os aportes: Xavier AUMONT contribuiu 742 ações da ARCHEAN, Franck GICQUEL 80 (inpi_id 63f0a89c7a07a2434c069135, páginas 5 e 6, na constituição da HADEAN em 2007-09-18) e Michel CAPGRAS 225 (inpi_id 63f0a89c7a07a2434c069136, página 3, em 2008-04-30). As três contagens coincidem exatamente com o estado de 2006-10-20 desta timeline. É o caso que o brief antecipa: a relação não aparece nos documentos da própria Archean e exige ir olhar a controladora. Resta uma lacuna estreita e nomeada: as 953 ações de Antonio BLANCO MARINA não aparecem em nenhum ato da HADEAN presente no acervo. (3) O artigo 6 dos estatutos anexos ao ato de 2018 grafa '185 759 euros' onde a 1ª Resolução do mesmo ato prova 182 759 euros (217.241 + 182.759 = 400.000): erro material do escrivão. (4) Dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) citam trechos que aparecem duas vezes na mesma página; a bbox aponta a primeira ocorrência e é ambígua por construção. (5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de '20/10/2006'; '200.0euros' em vez de '200.000 euros' (desvio de fator 1000) e '2o08' em vez de '2008'; '(82ooo)' em vez de '(82000)'. Os snippets submetidos usam os valores corretos, conferidos contra a imagem renderizada do PDF — o OCR é entrada, não fonte de verdade. Auditoria reproduzível com: python main.py --siren 480489707 --ocr-errors --benchmark results.json"
 }
