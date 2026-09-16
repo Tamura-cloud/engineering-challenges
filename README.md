@@ -15,7 +15,8 @@ This repository contains the complete historical reconstruction of the capital c
 ### Key Highlights:
 * **`results.json` Deliverable:** Located at repository root, fully compliant and validated against `challenges/actes/schema/results.schema.json`.
 * **22 Grounded Events:** Every corporate event carries strict provenance (`inpi_id`, `page`, normalized `bbox [x0, y0, x1, y1]`, and text `snippet`).
-* **6 Reconstructed Capital States:** From incorporation at **37.000 €** to the current stable capital of **400.000 €**, closed with 100% mathematical and share-conservation consistency.
+* **6 Reconstructed Capital States:** From incorporation at **37.000 €** to the current stable capital of **400.000 €**, closed with 100% share-conservation consistency.
+* **47 of 48 invariant checks pass, and the failing one is the point.** `python main.py --audit results.json` reports **REPROVADO** and exits non-zero, on purpose. Invariant #5 (holder continuity) fails between 2006-10-20 and 2008-06-27, which is exactly where four individual shareholders leave the cap table without a naming *cédant* in any Archean act. An audit that returned green here would be the bug, not the feature — the gap is declared rather than smoothed over. See §5.
 * **The Group Bonus (`group`):** Reconstructed corporate ownership proving that holding company **HADEAN (SIREN 499979540)** acquired and owns 100% of Archean Technologies.
 * **Provenance verified, not asserted:** all **22/22** submitted snippets were re-located inside the shipped OCR, and **18/22** reproduce the declared `bbox` to within 0.002. The remaining 4 are documented ambiguities, not silent guesses. Reproduce with `python main.py --siren 480489707 --benchmark results.json`.
 * **Contradictions found and declared:** three material discrepancies inside the acts themselves (Acts 3, 4 and 15), six OCR transcription errors on pages we actually cite — including a **factor-1000 misread** (`200.0euros` where the document reads `200.000 euros`) — and one share-allocation error *we made ourselves* and corrected against the scanned image. All are listed in `results.json.notes`.
@@ -39,6 +40,8 @@ Regenerates `results.json` from the grounded event ledger, checks the algebraic 
 ### Verify what is claimed (no API key needed)
 ```bash
 # Six invariants + schema, against the submitted file
+# Expected: 47/48 and exit code 1. The single failure is invariant #5, the
+# declared 2008 gap — see §5. A green run here would mean the check is broken.
 python main.py --audit results.json
 
 # Re-locate every snippet in the shipped OCR and diff the bbox against the claim
