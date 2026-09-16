@@ -249,7 +249,7 @@ Para recalcular todos os invariantes, testar o fechamento de ações e gerar o `
 python reconcile_timeline.py
 ```
 *Saída esperada:*  
-`[OK Invariante 1]`, `[OK Invariante 2]`, `[OK Invariante 3]` em todos os 9 estados e `Schema Validation: SUCESSO!`. O total é **81/82** — a única falha é o invariante #5, as 953 ações de Antonio BLANCO MARINA, que nenhum ato dos dois acervos registra.
+`[OK Invariante 1]`, `[OK Invariante 2]`, `[OK Invariante 3]` em todos os 9 estados e `Schema Validation: SUCESSO!`. O total é **94/96** — as duas falhas são nomeadas: o invariante #5 (as 953 ações de Antonio BLANCO MARINA, que nenhum ato dos dois acervos registra) e o invariante #8 (a consolidação de 2008, modelada como entrada única).
 
 ### 9.3. Inspecionar Qualquer Caixa Visualmente
 Para desenhar o retângulo vermelho em cima do documento original e abrir a imagem na tela:
@@ -270,10 +270,10 @@ Quando você for defender este projeto na entrevista técnica, siga esta estrutu
 1. **Abertura e Filosofia de Trabalho:**  
    *"Não tratei o OCR como uma verdade absoluta. Em projetos de engenharia de documentos jurídicos, o OCR é apenas a camada perceptual (pixels para texto). A inteligência real esteve em construir um ledger contábil com invariantes de conservação de ações — e em aceitar que as verificações apontassem contra o próprio trabalho: quando o README afirmava um método que o código não implementava, foi um invariante novo que expôs o estado com data errada. Os números da timeline são conferidos à mão contra a imagem da página; o que a máquina garante é que eles fecham, e que qualquer causa listada é anterior ao estado que ela causa."*
 2. **A Reconstrução Histórica:**  
-   *"Mapeei 20 anos da Archean Technologies em 6 grandes épocas: a fundação com 37k € em 2004, a transição por investidores temporários em 2005 (150k €), a entrada do sócio Capgras em 2006 (200k €), o split e a chegada da holding HADEAN com fundos de venture capital em 2008 (368k €), a saída dos fundos em 2017 (217k €) e o aumento por reservas em 2018 até os 400k € atuais."*
+   *"Mapeei 20 anos da Archean Technologies em 9 estados: a fundação com 37k € em 2004, o primeiro aumento para 150k € em maio de 2005, a cessão que reposicionou os fundadores em agosto de 2005, a entrada de Capgras em 2006 (200k €), os aportes dos sócios pessoa física à holding HADEAN em 2007 e 2008 — documentados na pasta da controladora, não na da Archean —, o split e a rodada de venture capital em 2008 (368k €), a saída dos fundos em 2017 (217k €) e a incorporação de reservas em 2018 até os 400k € atuais."*
 3. **O Tratamento das Incoerências:**  
-   *"Identifiquei com precisão as três contradições reais dos documentos: o erro formal no protocolo do Ato 3, o rebalanceamento de 20 cotas no Ato 4 e o erro tipográfico no corpo do Artigo 6 do Ato 15 (onde o texto cita 185.759 € mas a matemática contábil e a primeira deliberação provam que foram 182.759 €)."*
+   *"Identifiquei as contradições reais dos documentos: o erro formal no protocolo do Ato 3, a divergência de 20 ações entre a ata do Ato 3 (823/617) e a folha de presença certificada do Ato 4 (803/637), e o erro tipográfico no Artigo 6 do Ato 15, onde o texto cita 185.759 € mas a 1ª Deliberação e a aritmética provam 182.759 €. Na divergência de 20 ações eu não escolhi: apliquei uma regra — vence a leitura sob a qual a cadeia seguinte fecha usando apenas movimentos documentados — e a lista de subscrição desempatou (330+150+20 = 500)."*
 4. **Ergonomia e Segurança:**  
-   *"Construí ferramentas internas como o `quick_check.py` para permitir auditoria visual instantânea de qualquer uma das 22 caixas, e estruturei o pipeline com custo zero de API externa, eliminando qualquer risco de vazamento de credenciais conforme orientado no briefing."*
+   *"Construí ferramentas internas como o `quick_check.py` para auditoria visual instantânea, e um relatório de linha do tempo que embute o recorte da própria página ao lado de cada citação, para os 31 eventos ancorados. O pipeline não consome nenhuma API externa no caminho que produz a entrega, o que elimina qualquer risco de vazamento de credenciais conforme orientado no briefing."*
 5. **O Bônus do Grupo:**  
    *"Resolvi o bônus comprovando a relação de controle total da HADEAN (SIREN 499979540) sobre a Archean Technologies."*
