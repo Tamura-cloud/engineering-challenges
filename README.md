@@ -49,8 +49,25 @@ python main.py --siren 480489707 --ocr-errors --benchmark results.json
 
 # Where does a phrase sit, in submittable coordinates?
 python main.py --siren 480489707 --ground "Le capital social est fixé à la somme de trente sept mille"
+
+# See the capital evolve: composition bar per state, entries/exits, cause of each state
+python main.py --timeline-html results.json --output reports/timeline_480489707.html
 ```
 `--benchmark` is the check that matters: it answers *"do the boxes point where you say they do?"* without trusting either the OCR or our own claims.
+
+### Any company in the corpus — and the optional LLM reader
+
+Nothing in `src/` is Archean-specific. Given a SIREN, the same code triages the corpus, grounds the citations and derives the ledger:
+
+```bash
+# Read a company's OCR with DeepSeek, propose events, then ground + verify them
+python main.py --siren 820561470 --extract --output results_pautet_llm.json
+
+# Same destination, but from events a human already wrote
+python main.py --events events/events_820561470.json --output results_820561470.json
+```
+
+**SARL PAUTET (SIREN 820561470)** is carried in this repository as a control case, because its cap table was read by hand first, boxes included. The timeline derived from the model's reading is **identical field by field to the hand-derived one** — 1 000 shares in 2016 and 15 000 in 2022, same holders, same dates — and both pass every invariant. The model emitted 2 events where the human emitted 5; both routes land on the same cap table. The raw model proposal is frozen to `events/events_820561470_candidate.json` so that the *unverified* reading can still be audited after the fact.
 
 ### Inspect Visual Grounding (Bounding Boxes)
 To verify any event's red bounding box drawn directly over the original scanned document:
@@ -75,9 +92,10 @@ python quick_check.py --doc 4 --page 3 --bbox [0.0499, 0.1685, 0.9479, 0.2007]
 
 ---
 
-## 4. How I Used AI
+<a id="ai-tools"></a>
+## 4. How I used AI
 
-In compliance with the brief's [AI Tools policy](#ai-tools), AI (Google DeepMind Antigravity / Claude / Gemini) was utilized as an **Interactive Senior Engineering Mentor and Pair Programmer**:
+The brief asks for this section by name and asks that the tools be named. What was actually used: **GitHub Copilot** (DeepSeek V4.1 Flash) in VS Code agent mode, as an interactive senior engineering mentor and pair programmer. **DeepSeek** (`deepseek-chat`, temperature 0) is additionally wired into the optional extractor described in §2. Earlier scoping drafts also leaned on Claude and Gemini.
 
 * **What was delegated to AI:**
   * Drafting high-efficiency extraction boilerplate and PyMuPDF coordinate geometry math;
@@ -94,6 +112,7 @@ In compliance with the brief's [AI Tools policy](#ai-tools), AI (Google DeepMind
   * **The pipeline silently dropped every event it could not ground.** The brief says the opposite — *"an event you cannot ground is still worth reporting, with a note saying so"*. The behaviour was inverted once the brief was re-read against the code.
   * **An early audit treated the OCR text as ground truth.** It graded the JSON against the OCR, so any snippet disagreeing with a corrupt OCR line looked fabricated. Rendering the page proved the reverse in at least one case: the image reads `(37.000)` while the OCR says `(37.0o0)`. The verification order had to be inverted — image first, OCR only as a locator.
   * **A confidence-based error filter was tried and rejected.** Filtering OCR lines by their `score` finds nothing useful: the provably wrong line `(37.0o0)` scores **0.988**, against a corpus median of 0.991. Detection had to move to numeric-token patterns, which is what `src/ocr_audit.py` now does.
+  * **The `allocation` semantics were wrong in my code, not in the model's reading.** On the PAUTET control case the model reported 7 140 and 6 860 *new* shares for the 2022 reserves incorporation. My ledger **assigned** them instead of **adding** them, producing 14 000 shares against a capital of 150 000 € at a 10 € nominal — a 15× error in the denominator of the cap table. The act's own share numbering ("de 1 à 510 et de 1001 à 8140") proves the model right and the ledger wrong. The model also flagged an internal contradiction in the document itself (the text says 6 850 new shares, the articles say 7 350 total) and resolved it correctly from the updated articles. Fixed by making `allocation` additive; the same lesson as the 803/637 transposition, from the other direction: the arithmetic is ground truth and does not care who wrote the claim.
 
 ---
 
@@ -141,6 +160,23 @@ In compliance with the brief's [AI Tools policy](#ai-tools), AI (Google DeepMind
 | **15** | 2018-05-30 | Augmentation du capital social | **INCLUDED** | Capital increase to 400.000 € via reserves incorporation for HADEAN. |
 | **16** | 2018-11-02 | Démission de commissaire | **EXCLUDED** | Out of scope: Statutory auditor resignation. |
 | **17** | 2025-12-02 | Approbation des comptes | **EXCLUDED** | Out of scope: Ordinary annual approval of 2023 accounts; capital stable at 400k €. |
+
+---
+
+<a id="submitting"></a>
+## Submitting
+
+`challenges/actes/BRIEF.md` links to `../../README.md#ai-tools` and `../../README.md#submitting`.
+Those two anchors are defined in this file, so the brief's own links resolve inside this repository.
+
+**What is submitted:** `results.json` at the repository root (the Actes deliverable), plus the code
+that produced it and the code that audits it. The submitted artefact needs no API key and no network.
+
+**Layout:** `src/` is the reusable pipeline (loader, pre-filter, grounding, ledger, validator,
+reports); `main.py` is the CLI; `reconcile_timeline.py` is the Archean-specific assembler behind the
+submitted file. `events/` holds the events as data — the *reading* — deliberately separated from the
+code that checks it. `data/` is the third-party corpus: untracked, both for size and because the
+corpus `NOTICE.md` asks that it not be redistributed.
 
 ---
 *Takeovers SAS Engineering Challenge Submission — September 2026*

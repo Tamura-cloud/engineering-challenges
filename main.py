@@ -37,6 +37,7 @@ from src import (
     ocr_audit,
     pipeline,
     report_html,
+    report_timeline,
     validator,
 )
 from src.ocr_loader import list_documents, list_sirens, summarize
@@ -79,6 +80,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--report-html",
         metavar="RESULTS",
         help="gera o HTML de verificação visual (imagem + caixa + alegação) de um results.json",
+    )
+    parser.add_argument(
+        "--timeline-html",
+        metavar="RESULTS",
+        help="gera o HTML da linha do tempo (composição do capital estado a estado) de um results.json",
     )
     parser.add_argument(
         "--extract",
@@ -258,6 +264,26 @@ def _cmd_report(results_path: Path, output: str | None) -> int:
     return EXIT_OK
 
 
+def _cmd_timeline(results_path: Path, output: str | None) -> int:
+    """Gera o HTML da linha do tempo a partir de um results.json."""
+    import json
+
+    if not results_path.is_file():
+        print(f"arquivo não encontrado: {results_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    siren = str(payload.get("siren") or "desconhecido")
+    destination = (
+        Path(output) if output else config.REPO_ROOT / "reports" / f"timeline_{siren}.html"
+    )
+    written = report_timeline.build_timeline(payload, destination)
+    states = len(payload.get("capital_timeline") or [])
+    print(f"{states} estados desenhados")
+    print(f"HTML escrito em: {written}")
+    return EXIT_OK
+
+
 def _cmd_events(events_path: Path, output: str | None, min_score: float) -> int:
     """Gera o results_<siren>.json a partir de um arquivo de eventos.
 
@@ -370,6 +396,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report_html:
         return _cmd_report(Path(args.report_html), args.output)
+
+    if args.timeline_html:
+        return _cmd_timeline(Path(args.timeline_html), args.output)
 
     if args.extract:
         if not args.siren:
