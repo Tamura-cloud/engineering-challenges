@@ -243,7 +243,130 @@ def build_events():
             }
         },
 
-        # 5. Entrada da HADEAN, Split 100:1 e Emissão de Ações Preferenciais A e B (2008-06-27, Docs 5 e 6)
+        # 5. Saída dos sócios pessoa física para a HADEAN, por aporte em natureza.
+        #
+        # Os atos estão na pasta da HADEAN, não na da Archean — é o caso que o
+        # brief antecipa: "the relationship does not appear in the company's own
+        # documents, you have to go look at the parent". O ato de constituição da
+        # HADEAN (inpi_id 63f0a89c7a07a2434c069135) registra os aportes de Xavier
+        # AUMONT (742 ações) e Franck GICQUEL (80), e diz que "les apports qui
+        # précèdent prennent effet à compter de ce jour" — o dia da assinatura do
+        # ato, 7 de setembro de 2007, NÃO a data de depósito (18/09). O relatório
+        # do comissário aos aportes de 2008 (inpi_id 63f0a89c7a07a2434c069136)
+        # registra o de Michel CAPGRAS (225 ações), "effectués en date du
+        # 18/04/2008", depositado em 30/04. É a armadilha que o próprio brief
+        # avisa: efeito não é depósito, e às vezes são meses.
+        {
+            "event_id": "evt_2007-09-07_transfer_aumont_hadean",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2007-09-07",
+            "payload": {
+                "from_name": "Xavier AUMONT",
+                "to_name": "HADEAN",
+                "shares": 742
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069135",
+                "page": 5,
+                "bbox": [0.1188, 0.6928, 0.8848, 0.7231],
+                "snippet": "6.2- Apport de 742 actions de la SAS ARCHEAN TECHNOLOGIES par Monsieur Xavier AUMONT"
+            }
+        },
+        {
+            "event_id": "evt_2007-09-07_end_aumont",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2007-09-07",
+            "payload": {
+                "holder_name": "Xavier AUMONT",
+                "shares": 742
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069135",
+                "page": 5,
+                "bbox": [0.1188, 0.6928, 0.8848, 0.7231],
+                "snippet": "6.2- Apport de 742 actions de la SAS ARCHEAN TECHNOLOGIES par Monsieur Xavier AUMONT"
+            }
+        },
+        {
+            "event_id": "evt_2007-09-07_transfer_gicquel_hadean",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2007-09-07",
+            "payload": {
+                "from_name": "Franck GICQUEL",
+                "to_name": "HADEAN",
+                "shares": 80
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069135",
+                "page": 6,
+                "bbox": [0.1202, 0.2798, 0.8855, 0.2945],
+                "snippet": "6.3- Apport de 80 actions de la SAS ARCHEAN TECHNOLOGIES par Monsieur"
+            }
+        },
+        {
+            "event_id": "evt_2007-09-07_end_gicquel",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2007-09-07",
+            "payload": {
+                "holder_name": "Franck GICQUEL",
+                "shares": 80
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069135",
+                "page": 6,
+                "bbox": [0.1202, 0.2798, 0.8855, 0.2945],
+                "snippet": "6.3- Apport de 80 actions de la SAS ARCHEAN TECHNOLOGIES par Monsieur"
+            }
+        },
+        {
+            "event_id": "evt_2007-09-07_entry_hadean_apports",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2007-09-07",
+            "payload": {
+                "holder_name": "HADEAN",
+                "holder_siren": "499979540",
+                "shares": 822
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069135",
+                "page": 6,
+                "bbox": [0.1202, 0.2798, 0.8855, 0.2945],
+                "snippet": "6.3- Apport de 80 actions de la SAS ARCHEAN TECHNOLOGIES par Monsieur"
+            }
+        },
+        {
+            "event_id": "evt_2008-04-18_transfer_capgras_hadean",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2008-04-18",
+            "payload": {
+                "from_name": "Michel CAPGRAS",
+                "to_name": "HADEAN",
+                "shares": 225
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069136",
+                "page": 3,
+                "bbox": [0.1555, 0.4931, 0.8765, 0.5093],
+                "snippet": "Monsieur Michel CAPGRAS propose de faire apport à la SAS HADEAN de 225 actions"
+            }
+        },
+        {
+            "event_id": "evt_2008-04-18_end_capgras",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2008-04-18",
+            "payload": {
+                "holder_name": "Michel CAPGRAS",
+                "shares": 225
+            },
+            "source": {
+                "inpi_id": "63f0a89c7a07a2434c069136",
+                "page": 3,
+                "bbox": [0.1555, 0.4931, 0.8765, 0.5093],
+                "snippet": "Monsieur Michel CAPGRAS propose de faire apport à la SAS HADEAN de 225 actions"
+            }
+        },
+
+        # 6. Entrada da HADEAN, Split 100:1 e Emissão de Ações Preferenciais A e B (2008-06-27, Docs 5 e 6)
         {
             "event_id": "evt_2008-06-27_entry_hadean",
             "event_code": "SHAREHOLDER_ENTRY",
@@ -586,6 +709,79 @@ def build_timeline():
                 "evt_2006-10-20_cap_increase_200k",
                 "evt_2006-10-20_entry_capgras",
                 "evt_2006-10-20_transfer_aumont_to_capgras"
+            ]
+        },
+
+        # Estado: após os aportes de AUMONT e GICQUEL à HADEAN (2007-09-07)
+        #
+        # AUMONT (742) e GICQUEL (80) transferem a totalidade das suas ações à
+        # HADEAN. Restam BLANCO 953 + CAPGRAS 225 + HADEAN 822 = 2.000 ações,
+        # que é o total em circulação desde 2006-10-20.
+        {
+            "as_of": "2007-09-07",
+            "capital_eur": 200000.0,
+            "shares_total": 2000,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 953,
+                    "pct": 47.65
+                },
+                {
+                    "name": "HADEAN",
+                    "siren": "499979540",
+                    "kind": "COMPANY",
+                    "shares": 822,
+                    "pct": 41.10
+                },
+                {
+                    "name": "Michel CAPGRAS",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 225,
+                    "pct": 11.25
+                }
+            ],
+            "caused_by": [
+                "evt_2007-09-07_transfer_aumont_hadean",
+                "evt_2007-09-07_end_aumont",
+                "evt_2007-09-07_transfer_gicquel_hadean",
+                "evt_2007-09-07_end_gicquel",
+                "evt_2007-09-07_entry_hadean_apports"
+            ]
+        },
+
+        # Estado: após o aporte de CAPGRAS à HADEAN (2008-04-18)
+        #
+        # Restam BLANCO 953 + HADEAN 1.047 = 2.000 ações. A saída de BLANCO é a
+        # única que nenhum documento dos dois acervos registra — ver nota (2).
+        {
+            "as_of": "2008-04-18",
+            "capital_eur": 200000.0,
+            "shares_total": 2000,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 953,
+                    "pct": 47.65
+                },
+                {
+                    "name": "HADEAN",
+                    "siren": "499979540",
+                    "kind": "COMPANY",
+                    "shares": 1047,
+                    "pct": 52.35
+                }
+            ],
+            "caused_by": [
+                "evt_2008-04-18_transfer_capgras_hadean",
+                "evt_2008-04-18_end_capgras"
             ]
         },
 

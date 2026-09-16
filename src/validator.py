@@ -188,10 +188,25 @@ def check_event_vs_deposit(
     Um ato só pode registrar decisão que já aconteceu. Se a data declarada for
     posterior ao depósito, ou a data está errada ou o documento é outro.
     """
-    from .ocr_loader import list_documents  # import tardio, evita ciclo
+    from .ocr_loader import list_documents, list_sirens  # import tardio, evita ciclo
 
     target = str(siren or payload.get("siren") or SUBJECT_SIREN)
     deposits = {document.doc_id: document.deposit_date for document in list_documents(target)}
+
+    # A prova de algumas dessas datas mora na pasta da controladora, não na da
+    # própria empresa — o BRIEF diz que a relação "does not appear in the
+    # company's own documents". Se um ato citado não está na pasta do sujeito,
+    # procura no resto do acervo antes de acusar depósito ausente.
+    cited = {
+        str((event.get("source") or {}).get("inpi_id") or "")
+        for event in payload.get("events") or []
+    }
+    if any(doc_id and doc_id not in deposits for doc_id in cited):
+        for other in list_sirens():
+            if other == target:
+                continue
+            for document in list_documents(other):
+                deposits.setdefault(document.doc_id, document.deposit_date)
 
     checks: list[Check] = []
     for event in payload.get("events") or []:

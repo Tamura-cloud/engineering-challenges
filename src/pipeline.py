@@ -19,7 +19,7 @@ from typing import Any, Iterable, Sequence
 
 from . import extractor_llm, grounding, validator
 from .config import CONTEXT_MAX_CHARS_PER_PAGE, SUBJECT_SIREN
-from .ocr_loader import Document, list_documents
+from .ocr_loader import Document, list_documents, list_sirens
 from .prefilter import DEFAULT_MIN_SCORE, select_pages
 
 #: Ordem canônica de agrupamento dos estados de capital.
@@ -327,11 +327,17 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
     correção da interpretação.
 
     Para cada evento do arquivo de referência: procura o ``snippet`` no OCR de
-    todos os documentos da SIREN e compara a bbox obtida com a declarada.
+    todos os documentos da empresa e, se não achar, no resto do acervo.
+
+    A segunda passada não é conveniência. O BRIEF avisa que algumas dessas
+    relações não aparecem nos documentos da própria empresa e exigem ir olhar a
+    controladora. Quando um ato da HADEAN é a prova de uma saída na cap table da
+    Archean, uma conferência que só olhasse a pasta da Archean diria AUSENTE — e
+    estaria errada.
     """
     reference = json.loads(reference_path.read_text(encoding="utf-8"))
     siren = str(reference.get("siren") or SUBJECT_SIREN)
-    documents = list_documents(siren, kind)
+    primary = [doc for doc in list_documents(siren, kind) if doc.has_ocr]
 
     lines_cache: dict[tuple[str, int], tuple] = {}
 
@@ -343,17 +349,33 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             lines_cache[(document.doc_id, page)] = cached
         return cached
 
+    def scan(documents: Sequence[Document], snippet: str) -> list[str]:
+        hits: list[str] = []
+        for document in documents:
+            for page in document.ocr_pages:
+                if grounding.locate_in_lines(page_lines(document, page), snippet):
+                    hits.append(f"{document.doc_id} p{page}")
+        return hits
+
+    elsewhere: list[Document] = []
+    elsewhere_loaded = False
+
     rows: list[BenchmarkRow] = []
     for event in reference.get("events") or []:
         source = event.get("source") or {}
         snippet = source.get("snippet") or ""
-        found: list[str] = []
-        for document in documents:
-            if not document.has_ocr:
-                continue
-            for page in document.ocr_pages:
-                if grounding.locate_in_lines(page_lines(document, page), snippet):
-                    found.append(f"{document.doc_id} p{page}")
+        found = scan(primary, snippet)
+        if not found:
+            if not elsewhere_loaded:
+                elsewhere = [
+                    doc
+                    for other in list_sirens()
+                    if other != siren
+                    for doc in list_documents(other, kind)
+                    if doc.has_ocr
+                ]
+                elsewhere_loaded = True
+            found = scan(elsewhere, snippet)
 
         cited_doc = str(source.get("inpi_id") or "")
         cited_page = source.get("page")
@@ -365,7 +387,9 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             status = "DOC_ERRADO"
 
         delta: float | None = None
-        document = next((d for d in documents if d.doc_id == cited_doc), None)
+        document = next(
+            (doc for doc in (primary + elsewhere) if doc.doc_id == cited_doc), None
+        )
         if status == "CITADO_OK" and document is not None:
             match = grounding.ground_document(
                 document, snippet, page=cited_page, min_score=0.0
