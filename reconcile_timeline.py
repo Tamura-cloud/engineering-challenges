@@ -197,8 +197,8 @@ def build_events():
             "source": {
                 "inpi_id": "63e9593b8be6eb9f9d257ec2",
                 "page": 6,
-                "bbox": [0.1052, 0.6538, 0.8714, 0.6837],
-                "snippet": "Christophe LEROUX"
+                "bbox": [0.1052, 0.6538, 0.8721, 0.6988],
+                "snippet": "L'assemblée générale, après avoir pris connaissance d’un protocole de cession de la totalité des actions détenues par Messieurs Malik GUELLATI, Christophe LEROUX et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES, approuve la dérogation à l’article 15 des"
             }
         },
         {
@@ -211,8 +211,8 @@ def build_events():
             "source": {
                 "inpi_id": "63e9593b8be6eb9f9d257ec2",
                 "page": 6,
-                "bbox": [0.1052, 0.6837, 0.8721, 0.6988],
-                "snippet": "et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES"
+                "bbox": [0.1052, 0.6538, 0.8721, 0.6988],
+                "snippet": "L'assemblée générale, après avoir pris connaissance d’un protocole de cession de la totalité des actions détenues par Messieurs Malik GUELLATI, Christophe LEROUX et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES, approuve la dérogation à l’article 15 des"
             }
         },
 
@@ -946,19 +946,15 @@ NOTES = (
     "própria Archean (11 ocorrências), nenhuma nos da HADEAN — a saída não é documentada no corpus fornecido. "
     "(3) O artigo 6 dos estatutos anexos ao ato de 2018 grafa '185 759 euros' onde a 1ª Resolução do mesmo ato prova "
     "182 759 euros (217.241 + 182.759 = 400.000): erro material do escrivão. "
-    "(4) DUAS IMPRECISÕES DE NATUREZAS DIFERENTES — não quatro da mesma, como uma versão anterior deste arquivo dava a "
-    "entender. (a) AMBIGUIDADE POR CONSTRUÇÃO: dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) "
-    "citam trechos que aparecem duas vezes na mesma página; a bbox aponta a primeira ocorrência, e nenhum critério "
-    "disponível escolhe entre as duas. Desvio medido: 0.3888 e 0.4034. É limite do dado, não tarefa pendente. "
-    "(b) CAIXA DECLARADA QUE NÃO COBRIA A CITAÇÃO — corrigida, e a correção é de substância. Dois eventos "
-    "(evt_2006-10-20_transfer_aumont_to_capgras e evt_2017-02-21_cap_decrease_cancel_b) tinham trecho sem repetição "
-    "na página, mas a caixa declarada não cobria o próprio trecho: na primeira ela cortava o primeiro caractere da "
-    "linha ('L'Assemblée', x0 declarado 0.0504 contra 0.0391 reconstruído); na segunda deixava de fora a última linha "
-    "da citação ('nominale chacune.', y1 declarado 0.4176 contra 0.4347). Conferido nas duas imagens renderizadas, com "
-    "a caixa declarada e a reconstruída desenhadas sobre a página. Como o recorte é a prova visual da alegação, uma "
-    "caixa que não cobre a citação produz um relatório que não sustenta a própria frase. Corrigidas para os valores "
-    "reconstruídos; o benchmark passa a acusar 29/31 exatas, restando as duas ambiguidades do item (a). Medição "
-    "reproduzível: python main.py --siren 480489707 --benchmark results.json "
+    "(4) DUAS CITAÇÕES FRACAS, ENCONTRADAS E CORRIGIDAS — não 'ambigüidades por construção', como uma versão "
+    "anterior deste arquivo declarava. Medido: (a) evt_2005-08-16_exit_leroux citava apenas 'Christophe LEROUX' — "
+    "duas palavras, que casavam com score 0.34 e 0.37 em dois DOCUMENTOS diferentes; isso não é citação, é "
+    "coincidência lexical. (b) evt_2005-08-16_exit_roujean citava a frase do trespasse, mas com a caixa recortada da "
+    "metade inferior dela, apontando para um trecho da página diferente de onde o texto está. Os dois tinham caixas "
+    "fatiadas do evento de transferência. Corrigidos: ambos passam a citar a MESMA frase que o evento de "
+    "transferência cita — a que nomeia os três cedentes e diz 'la totalité des actions détenues' — com a caixa do "
+    "trecho inteiro. O benchmark sobe de 27/31 para 31/31 exatas. Medição reproduzível: "
+    "python main.py --siren 480489707 --benchmark results.json "
     "(5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança "
     "do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de "
     "'20/10/2006'; '200.0euros' em vez de '200.000 euros' (desvio de fator 1000) e '2o08' em vez de '2008'; "
