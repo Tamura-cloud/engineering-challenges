@@ -1066,7 +1066,7 @@ def build_group():
                 "to": "HADEAN",
                 "relation": "share_contribution",
                 "pct": None,
-                "as_of": "2007-09-18",
+                "as_of": "2007-09-07",
                 "shares_archean": 742,
                 "source": {
                     "inpi_id": "63f0a89c7a07a2434c069135",
@@ -1080,7 +1080,7 @@ def build_group():
                 "to": "HADEAN",
                 "relation": "share_contribution",
                 "pct": None,
-                "as_of": "2007-09-18",
+                "as_of": "2007-09-07",
                 "shares_archean": 80,
                 "source": {
                     "inpi_id": "63f0a89c7a07a2434c069135",
@@ -1094,7 +1094,7 @@ def build_group():
                 "to": "HADEAN",
                 "relation": "share_contribution",
                 "pct": None,
-                "as_of": "2008-04-30",
+                "as_of": "2008-04-18",
                 "shares_archean": 225,
                 "source": {
                     "inpi_id": "63f0a89c7a07a2434c069136",

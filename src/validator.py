@@ -388,6 +388,56 @@ def check_holder_flow(
     return checks
 
 
+def check_group_vs_events(payload: dict[str, Any]) -> list[Check]:
+    """Invariante 9: o grafo não pode datar um fato diferente do evento que o documenta.
+
+    O `group` era o único campo do entregável sem verificação — e por isso guardou
+    por horas uma divergência: as arestas de aporte datadas pelo **depósito**
+    (2007-09-18, 2008-04-30) enquanto os eventos, já corrigidos, usavam o **efeito**
+    (2007-09-07, 2008-04-18). Uma aresta que cita o MESMO documento que um evento
+    descreve o mesmo fato, e então tem de concordar com ele na data.
+    """
+    group = payload.get("group")
+    if not isinstance(group, dict):
+        return []
+
+    by_doc: dict[str, list[str]] = {}
+    for event in payload.get("events") or []:
+        doc = str((event.get("source") or {}).get("inpi_id") or "")
+        date = str(event.get("event_date") or "")
+        if doc and date:
+            by_doc.setdefault(doc, []).append(date)
+
+    checks: list[Check] = []
+    for edge in group.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        doc = str((edge.get("source") or {}).get("inpi_id") or "")
+        as_of = str(edge.get("as_of") or "")
+        scope = f"{edge.get('from')} -> {edge.get('to')} ({edge.get('relation')})"
+        dates = by_doc.get(doc)
+        if not dates:
+            checks.append(
+                Check(
+                    "Invariante 9 (Grafo←Eventos)",
+                    scope,
+                    True,
+                    "não compartilha documento com evento nenhum — não verificável por esta via",
+                )
+            )
+            continue
+        ok = as_of in dates
+        detail = (
+            f"as_of {as_of} coincide com o evento do mesmo documento"
+            if ok
+            else f"as_of {as_of} != data do evento no mesmo documento ({', '.join(sorted(set(dates)))}) — "
+            "data de efeito, não de depósito"
+        )
+        checks.append(Check("Invariante 9 (Grafo←Eventos)", scope, ok, detail))
+
+    return checks
+
+
 def verify_algebraic_invariants(
     timeline: Sequence[dict[str, Any]],
 ) -> tuple[bool, list[Check]]:
@@ -458,6 +508,7 @@ def audit(payload: dict[str, Any]) -> tuple[bool, list[Check], list[str]]:
     checks.extend(check_event_vs_deposit(payload))
     checks.extend(check_state_vs_events(timeline, events))
     checks.extend(check_holder_flow(timeline, events))
+    checks.extend(check_group_vs_events(payload))
 
     algebra_ok = all(check.passed for check in checks)
     schema_ok, errors = validate_schema(payload, siren=str(payload.get("siren") or SUBJECT_SIREN))

@@ -16,7 +16,7 @@ This repository contains the complete historical reconstruction of the capital c
 * **`results.json` Deliverable:** Located at repository root, fully compliant and validated against `challenges/actes/schema/results.schema.json`.
 * **22 Grounded Events:** Every corporate event carries strict provenance (`inpi_id`, `page`, normalized `bbox [x0, y0, x1, y1]`, and text `snippet`).
 * **9 Reconstructed Capital States:** From incorporation at **37.000 €** to the current stable capital of **400.000 €**, closed with 100% share-conservation consistency.
-* **89 of 91 invariant checks pass, and the two failures are the point.** `python main.py --audit results.json` reports **REPROVADO** and exits non-zero, on purpose. Invariant #5 fails on exactly one holder: **Antonio BLANCO MARINA, 953 shares**, who leaves the cap table between 2008-04-18 and 2008-06-27 with no act in *either* company's folder recording it — a corpus-wide OCR sweep finds his name 11 times, all in Archean's own filings. Invariant #8 fails on the 2008 consolidation, because that transition is modelled as a single wholesale entry rather than by the movements composing it. Both are declared, not smoothed over.
+* **94 of 96 invariant checks pass, and the two failures are the point.** `python main.py --audit results.json` reports **REPROVADO** and exits non-zero, on purpose. Invariant #5 fails on exactly one holder: **Antonio BLANCO MARINA, 953 shares**, who leaves the cap table between 2008-04-18 and 2008-06-27 with no act in *either* company's folder recording it — a corpus-wide OCR sweep finds his name 11 times, all in Archean's own filings. Invariant #8 fails on the 2008 consolidation, because that transition is modelled as a single wholesale entry rather than by the movements composing it. Both are declared, not smoothed over. **Invariant #9 covers the bonus graph**, which was the only field in the deliverable with no check at all — and had silently kept the deposit dates (2007-09-18, 2008-04-30) while the events had already moved to the effect dates.
 * **Invariant 7 enforces the brief's own definition.** The brief defines `capital_timeline[]` as *"the state of the cap table after each of those events"*. Invariant #7 checks precisely that: every state's causes must exist and precede it, and every event date must have a state. It is the only check that links the two artefacts — and it is what surfaced a state dated `2005-05-17` whose own cited causes were all from `2005-08-16`.
 * **The Group Bonus (`group`):** Reconstructed corporate ownership proving that holding company **HADEAN (SIREN 499979540)** acquired and owns 100% of Archean Technologies.
 * **Provenance verified, not asserted:** all **31/31** submitted snippets were re-located inside the shipped OCR, and **27/31** reproduce the declared `bbox` to within 0.002. The remaining 4 are documented ambiguities, not silent guesses. Three of the events cite **Hadean's** filings rather than Archean's — the check searches the whole corpus, not just the subject's folder, because that is where the evidence is. Reproduce with `python main.py --siren 480489707 --benchmark results.json`.
@@ -41,8 +41,8 @@ Rebuilds `results.json` from the hand-assembled states in `reconcile_timeline.py
 
 ### Verify what is claimed (no API key needed)
 ```bash
-# Seven invariants + schema, against the submitted file
-# Expected: 89/91 and exit code 1. The two failures are invariant #5 and #8,
+# Nine invariants + schema, against the submitted file
+# Expected: 94/96 and exit code 1. The two failures are invariant #5 and #8,
 # both declared — see §5. A green run here would mean the checks are broken.
 python main.py --audit results.json
 
