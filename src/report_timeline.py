@@ -525,11 +525,13 @@ def build_timeline(
 {notes_block}
 
 <footer>
-  Estados derivados dos eventos por <code>src/ledger.py</code> — nenhum saldo é digitado à mão.
-  Cotações e percentuais vêm da aplicação dos eventos em ordem; a barra mostra a composição
-  de cada estado. Cada recorte é a própria página do ato, ampliada em volta da citação: é a
-  prova visual da alegação, não uma ilustração. O texto do OCR não é retratado — quando ele
-  diverge da imagem, a imagem manda.
+  Os estados são lidos do campo <code>capital_timeline</code> do arquivo — este relatório
+  não recalcula nada. Como cada arquivo foi produzido está declarado no README: o
+  entregável da Archean tem os estados montados à mão e conferidos pelos invariantes
+  algébricos; empresas processadas pelo pipeline têm os estados derivados dos eventos
+  por <code>src/ledger.py</code>. Cada recorte é a própria página do ato, ampliada em
+  volta da citação: é a prova visual da alegação, não uma ilustração. Quando o texto do
+  OCR diverge da imagem, a imagem manda.
 </footer>
 </body>
 </html>

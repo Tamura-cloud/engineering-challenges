@@ -626,6 +626,16 @@ NOTES = (
     "'(82ooo)' em vez de '(82000)'. Os snippets submetidos usam os valores corretos, conferidos contra a imagem "
     "renderizada do PDF — o OCR é entrada, não fonte de verdade. Auditoria reproduzível com: "
     "python main.py --siren 480489707 --ocr-errors --benchmark results.json"
+    "(6) MÉTODO, declarado para não induzir leitura errada: estes seis estados foram MONTADOS À MÃO em "
+    "reconcile_timeline.py::build_timeline(), a partir da leitura dos atos — não são derivados do array "
+    "events. A máquina confere os invariantes algébricos sobre a timeline digitada (fechamento das cotas, "
+    "identidade do capital, fechamento percentual, conservação de fluxo, coerência de datas), e é isso que o "
+    "47/48 mede. Rodar src/ledger.py sobre estes mesmos eventos devolve outra timeline — 370 cotas em "
+    "2005-05-17 em vez de 1.500, 201.725 em 2008-06-27 em vez de 368.102 — porque os eventos não carregam a "
+    "alocação de cotas de cada aumento intermediário, e o trespasse de 2005-08-16 nomeia cedentes "
+    "(GUELLATI, LEROUX, ROUJEAN) que não entram no quadro societário em nenhum evento. Derivar a timeline dos "
+    "eventos exigiria um evento de alocação por aumento — é o próximo passo, não uma afirmação que se possa "
+    "fazer hoje."
 )
 
 

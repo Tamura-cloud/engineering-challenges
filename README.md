@@ -20,7 +20,8 @@ This repository contains the complete historical reconstruction of the capital c
 * **The Group Bonus (`group`):** Reconstructed corporate ownership proving that holding company **HADEAN (SIREN 499979540)** acquired and owns 100% of Archean Technologies.
 * **Provenance verified, not asserted:** all **22/22** submitted snippets were re-located inside the shipped OCR, and **18/22** reproduce the declared `bbox` to within 0.002. The remaining 4 are documented ambiguities, not silent guesses. Reproduce with `python main.py --siren 480489707 --benchmark results.json`.
 * **Contradictions found and declared:** three material discrepancies inside the acts themselves (Acts 3, 4 and 15), six OCR transcription errors on pages we actually cite — including a **factor-1000 misread** (`200.0euros` where the document reads `200.000 euros`) — and one share-allocation error *we made ourselves* and corrected against the scanned image. All are listed in `results.json.notes`.
-* **Zero External API Cost:** `results.json` is produced by a deterministic, local Python ledger. No paid endpoint is required to reproduce or verify the submitted artefact.
+* **Zero External API Cost:** `results.json` is assembled by local Python and needs no paid endpoint — no network access is required to reproduce or verify the submitted artefact.
+* **How the timeline was built, stated plainly:** the six Archean states were **typed by hand** in `reconcile_timeline.py::build_timeline()` after reading the acts, then machine-checked. They are **not** derived from the `events` array. That distinction matters and §3 spells out what it costs. The derivation engine (`src/ledger.py`) is real and is used — but on the other companies, not on the submitted file.
 
 ---
 
@@ -35,7 +36,7 @@ pip install -r requirements.txt
 ```bash
 python reconcile_timeline.py
 ```
-Regenerates `results.json` from the grounded event ledger, checks the algebraic invariants across all six epochs, and validates the output against `challenges/actes/schema/results.schema.json`. Deterministic, offline, and requiring no credentials.
+Rebuilds `results.json` from the hand-assembled states in `reconcile_timeline.py`, re-checks the algebraic invariants across all six epochs, and validates the output against `challenges/actes/schema/results.schema.json`. Deterministic, offline, and requiring no credentials.
 
 ### Verify what is claimed (no API key needed)
 ```bash
@@ -88,8 +89,12 @@ python quick_check.py --doc 4 --page 3 --bbox [0.0499, 0.1685, 0.9479, 0.2007]
 
 ## 3. Trade-offs Made
 
-1. **Deterministic Ledger vs. Arbitrary Graph Overengineering:**  
-   Rather than building a complex, arbitrary multidimensional graph engine ahead of data extraction, we modeled corporate evolution as a **Finite State Machine (FSM) with Zero-Sum Share Conservation** ($S_{n-1} \xrightarrow{\Delta} S_n$). In French corporate law, time is strictly sequential and cumulative; an algebraic ledger guarantees 100% exact share balancing while respecting the 6–8 hour time budget.
+1. **Hand-assembled timeline, machine-checked arithmetic.**
+   The six Archean states were **assembled by hand** in `reconcile_timeline.py::build_timeline()`: each holder, share count and percentage was read from the acts and typed in as a literal. They are **not** derived from the `events` array — the two are parallel hand-authored artifacts.
+
+   That trade-off has a cost, and it should be named rather than hidden: **two hand-authored artifacts can drift apart, and nothing in the build catches it.** The invariants check the timeline's internal arithmetic, not that it follows from the events. What they *do* catch is real — share closure, capital identity, percentage closure, flow conservation, date consistency — and they are what surfaced the 803/637 transposition in §4.
+
+   `src/ledger.py` is a genuine derivation engine, and the PAUTET control case in §2 is produced by it end to end, events to states, with no typed balances. It does **not** produce the Archean timeline. Run it on the submitted events and you get **370 shares at 2005-05-17 instead of 1 500**, because the events do not carry the share allocation of each intermediate capital movement, and the 2005-08-16 transfer names sources (GUELLATI, LEROUX, ROUJEAN) who never enter the cap table in the event list at all. Closing that gap means sourcing an allocation event for every intermediate increase — an honest next step, not a claim we can make today.
 2. **Normalized Bounding Boxes (0.0 to 1.0) vs. Raw OCR Pixels:**  
    While raw OCR polygons are provided in 300-DPI pixels, our pipeline dynamically translates them using the PDF point geometry (measured dynamically per page via PyMuPDF `page.rect`, typically $\sim 1654 \times 2353$ pt for these scanned dossiers $\times \frac{300}{72}$) into normalized coordinates `[x0, y0, x1, y1]`, ensuring exact resolution-independent rendering matching `tools/bbox_viewer.py`.
 3. **Ergonomic CLI Tooling:**  
@@ -139,7 +144,7 @@ The brief asks for this section by name and asks that the tools be named. What w
 ## 6. Environment & Credentials Disclosure
 
 * As required by the briefing, this submission includes a **`.env.example`** naming every variable the code reads, with no values in it.
-* **The submitted `results.json` requires no keys at all.** It is produced by the deterministic ledger, and every verification command below runs offline. The brief explicitly notes this is *"a legitimate and interesting answer"*.
+* **The submitted `results.json` requires no keys at all.** It is produced locally by `reconcile_timeline.py`, and every verification command below runs offline. The brief explicitly notes this is *"a legitimate and interesting answer"*.
 * The repository also contains an **optional** semantic extractor (`src/extractor_llm.py`) that calls a DeepSeek endpoint through the OpenAI-compatible SDK. It is **not** on the path that produced the submitted artefact, its output is gated behind the same grounding and invariant checks as everything else, and it stays disabled unless `DEEPSEEK_API_KEY` is set — `python main.py --offline` exercises the full pipeline without it.
 
 ---
