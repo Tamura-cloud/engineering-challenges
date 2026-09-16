@@ -1,4 +1,4 @@
-"""Orquestrador de ponta a ponta e benchmark contra o gabarito.
+"""Orquestrador de ponta a ponta e benchmark contra um results.json de referência.
 
 Fluxo::
 
@@ -320,7 +320,11 @@ class BenchmarkRow:
 
 
 def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[BenchmarkRow], dict[str, Any]]:
-    """Re-ancora os eventos de um gabarito e mede a fidelidade do grounding.
+    """Re-ancora os eventos de um results.json de referência, medindo o grounding.
+
+    A referência é uma reconstrução nossa, não um gabarito externo: o que a
+    checagem mede é a consistência entre a alegação e a evidência no OCR, não a
+    correção da interpretação.
 
     Para cada evento do arquivo de referência: procura o ``snippet`` no OCR de
     todos os documentos da SIREN e compara a bbox obtida com a declarada.

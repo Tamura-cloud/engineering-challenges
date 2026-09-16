@@ -29,7 +29,7 @@ RELATED_SIREN = "499979540"
 
 # Geometria: os polígonos do OCR vêm em PIXELS a 300 dpi, enquanto o PDF declara
 # a página em PONTOS. A conversão para o espaço unitário está em
-# ``src/grounding.py`` e foi validada contra o gabarito ``results.json``.
+# ``src/grounding.py`` e foi conferida contra as bboxes do ``results.json``.
 DPI_OF_OCR = 300
 POINTS_PER_INCH = 72
 PX_PER_POINT = DPI_OF_OCR / POINTS_PER_INCH

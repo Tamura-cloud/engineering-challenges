@@ -1,11 +1,15 @@
 """Resolução espacial de grounding: snippet -> bbox normalizada [0, 1].
 
-Conversão validada empiricamente contra o gabarito ``results.json``::
+Conversão validada empiricamente contra as bboxes do ``results.json``
+submetido — que é **reconstrução nossa**, não um gabarito externo: a Takeovers
+declara explicitamente que não publica um. O que a validação demonstra é que a
+bbox declarada é reproduzível a partir do OCR, não que a interpretação esteja
+certa::
 
     x_norm = x_px / (page_width_points  * 300/72)
     y_norm = y_px / (page_height_points * 300/72)
 
-Evidência da validação — o evento de constituição do gabarito traz
+Evidência da validação — o evento de constituição registrado no arquivo traz
 ``bbox = [0.1201, 0.3994, 0.6591, 0.4146]`` (página 3 do acte
 ``63e9593b8be6eb9f9d257ec5``). Aplicando a fórmula aos pixels do OCR da linha
 "Le capital social est fixé à la somme de trente sept mille…" obtém-se
@@ -14,7 +18,7 @@ Evidência da validação — o evento de constituição do gabarito traz
 
 O matcher é tolerante ao ruído de OCR (``o``/``0``, ``l``/``1``/``I``,
 ``s``/``5``, ``b``/``8``, ``g``/``6``/``9``, ``z``/``2``), a acentos, a
-pontuação e a quebras de linha: o snippet curado do gabarito diz ``(37.000)``
+pontuação e a quebras de linha: o snippet registrado no arquivo diz ``(37.000)``
 onde o OCR bruto traz ``(37.0o0)``.
 """
 

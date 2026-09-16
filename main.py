@@ -9,7 +9,7 @@ Exemplos::
     # Qualquer outra empresa do acervo
     python main.py --siren 499979540 --output results_hadean.json
 
-    # Benchmark: re-ancora os eventos de um gabarito e mede a fidelidade
+    # Benchmark: re-ancora os eventos do results.json de referência e mede a fidelidade
     python main.py --siren 480489707 --benchmark results.json
 
     # Utilitários que não tocam a API
@@ -201,7 +201,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     if destination.resolve() == config.RESULTS_PATH.resolve():
         print(
             "\nRECUSADO: o destino é o results.json da raiz, que é o artefato de entrega.\n"
-            "Use --output com outro nome para não sobrescrever o gabarito.",
+            "Use --output com outro nome para não sobrescrever o artefato de entrega.",
             file=sys.stderr,
         )
         return EXIT_FAILURE
