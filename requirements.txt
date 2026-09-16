@@ -1,0 +1,13 @@
+# Dependências do pipeline universal de reconstrução societária (trilha actes).
+#
+#   pip install -r requirements.txt
+#
+# O pipeline é determinístico na leitura/grounding do acervo; apenas o extrator
+# semântico (src/extractor_llm.py) requer a API da DeepSeek e é opcional via
+# --offline.
+
+openai>=1.40          # cliente do endpoint compatível da DeepSeek
+python-dotenv>=1.0    # leitura do .env (nunca comitado)
+jsonschema>=4.20      # validação contra challenges/actes/schema/results.schema.json
+pymupdf>=1.24         # geometria das páginas (pontos) para normalizar o bbox
+pydantic>=2.0         # reservado para modelagem tipada dos payloads de evento

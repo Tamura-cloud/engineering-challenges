@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""CLI do pipeline universal de reconstrução societária.
+
+Exemplos::
+
+    # Reconstrução da empresa sujeita do desafio
+    python main.py --siren 480489707 --output results_archean.json
+
+    # Qualquer outra empresa do acervo
+    python main.py --siren 499979540 --output results_hadean.json
+
+    # Benchmark: re-ancora os eventos de um gabarito e mede a fidelidade
+    python main.py --siren 480489707 --benchmark results.json
+
+    # Utilitários que não tocam a API
+    python main.py --siren 480489707 --triage
+    python main.py --audit results.json
+    python main.py --ground "Le capital social est fixé à la somme de trente sept mille"
+    python main.py --list-sirens
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+from src import config, grounding, ocr_audit, pipeline, validator
+from src.ocr_loader import list_documents, list_sirens, summarize
+from src.prefilter import DEFAULT_MIN_SCORE, triage
+
+EXIT_OK = 0
+EXIT_FAILURE = 1
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="Pipeline universal de reconstrução societária a partir do OCR do acervo.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument("--siren", help="SIREN de 9 dígitos a processar")
+    parser.add_argument(
+        "--output",
+        help="arquivo de saída (padrão: results_<siren>.json). Nunca sobrescreve results.json.",
+    )
+    parser.add_argument("--kind", default="actes", choices=("actes", "bilans"))
+    parser.add_argument(
+        "--benchmark",
+        metavar="REFERENCIA",
+        help="re-ancora os eventos de um results.json de referência e reporta divergências",
+    )
+    parser.add_argument(
+        "--audit",
+        metavar="ARQUIVO",
+        help="audita um results.json existente: invariantes algébricos + schema",
+    )
+    parser.add_argument("--triage", action="store_true", help="mostra a triagem de páginas e não chama a API")
+    parser.add_argument(
+        "--ocr-errors",
+        action="store_true",
+        help="aponta tokens numéricos suspeitos no OCR fornecido (não chama a API)",
+    )
+    parser.add_argument("--ground", metavar="SNIPPET", help="localiza um trecho no OCR e imprime a bbox")
+    parser.add_argument("--doc", help="restringe a busca a um inpi_id")
+    parser.add_argument("--page", type=int, help="restringe a busca a uma página")
+    parser.add_argument(
+        "--min-page-score",
+        type=int,
+        default=DEFAULT_MIN_SCORE,
+        help=f"score mínimo do pré-filtro (padrão: {DEFAULT_MIN_SCORE})",
+    )
+    parser.add_argument(
+        "--ground-min-score",
+        type=float,
+        default=0.60,
+        help="similaridade mínima para aceitar um grounding",
+    )
+    parser.add_argument("--offline", action="store_true", help="não chama a API da DeepSeek")
+    parser.add_argument("--model", help=f"modelo da DeepSeek (padrão: {config.DEEPSEEK_MODEL})")
+    parser.add_argument("--list-sirens", action="store_true", help="lista as SIRENs do acervo")
+    return parser
+
+
+def _cmd_list_sirens() -> int:
+    sirens = list_sirens()
+    print(f"{len(sirens)} SIRENs no acervo:\n")
+    for siren in sirens:
+        info = summarize(siren)
+        actes = info["kinds"]["actes"]
+        print(
+            f"  {siren}  actes={actes['documents']:>2} com_ocr={actes['with_ocr']:>2} "
+            f"paginas={actes['pages']:>4}"
+        )
+    return EXIT_OK
+
+
+def _cmd_audit(path: Path) -> int:
+    import json
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ok, checks, errors = validator.audit(payload)
+    print(validator.format_checks(checks))
+    if errors:
+        print("\nErros de schema:")
+        for error in errors:
+            print(f"  - {error}")
+    print(
+        f"\nAuditoria de {path.name}: {'APROVADO' if ok else 'REPROVADO'} "
+        f"({sum(1 for c in checks if c.passed)}/{len(checks)} invariantes, "
+        f"{len(errors)} erros de schema)"
+    )
+    return EXIT_OK if ok else EXIT_FAILURE
+
+
+def _cmd_ground(snippet: str, siren: str, doc: str | None, page: int | None) -> int:
+    match = grounding.ground_siren(siren, snippet, doc_id=doc, page=page)
+    if match is None:
+        print("Snippet não localizado no OCR do acervo dessa SIREN.")
+        return EXIT_FAILURE
+    print(f"Documento ... {match.doc_id}")
+    print(f"Página ...... {match.page}")
+    print(f"bbox ........ {[round(value, 4) for value in match.bbox]}")
+    print(f"Similaridade  {match.score:.4f}  ({len(match.line_indices)} linha(s))")
+    print(f"Texto casado  {match.matched_text}")
+    return EXIT_OK
+
+
+def _cmd_triage(siren: str, kind: str, min_score: int) -> int:
+    rows = triage(siren, kind=kind, min_score=min_score)
+    print(f"Triagem de {siren} / {kind} (score mínimo = {min_score})\n")
+    print(f"{'inpi_id':<26} {'depósito':<11} {'págs':>5} {'sel':>4}  assunto")
+    print("-" * 100)
+    for row in rows:
+        pages = row.get("pages_total") if row["has_ocr"] else 0
+        selected = row.get("pages_selected") if row["has_ocr"] else 0
+        note = "" if row["has_ocr"] else "  [SEM OCR]"
+        print(
+            f"{str(row['doc_id']):<26} {str(row['deposit_date']):<11} "
+            f"{pages:>5} {selected:>4}  {str(row['decision'] or '')[:40]}{note}"
+        )
+    return EXIT_OK
+
+
+def _cmd_ocr_errors(siren: str, kind: str, reference: str | None) -> int:
+    """Aponta erros do OCR. Com ``--benchmark``, restringe às páginas citadas."""
+    import json
+
+    findings = ocr_audit.scan_siren(siren, kind=kind)
+    if reference:
+        payload = json.loads(Path(reference).read_text(encoding="utf-8"))
+        material = ocr_audit.material_findings(findings, payload)
+        print(
+            f"De {len(findings)} achados no acervo, {len(material)} caem em páginas "
+            f"citadas por {Path(reference).name}:\n"
+        )
+        print(ocr_audit.render(material))
+        return EXIT_OK
+    print(ocr_audit.render(findings, limit=60))
+    return EXIT_OK
+
+
+def _cmd_benchmark(reference: Path, kind: str) -> int:
+    if not reference.is_file():
+        print(f"arquivo de referência não encontrado: {reference}")
+        return EXIT_FAILURE
+    rows, summary = pipeline.benchmark(reference, kind=kind)
+    print(pipeline.render_benchmark(rows, summary))
+    return EXIT_OK
+
+
+def _cmd_run(args: argparse.Namespace) -> int:
+    options = pipeline.PipelineOptions(
+        siren=args.siren,
+        kind=args.kind,
+        min_page_score=args.min_page_score,
+        offline=args.offline,
+        ground_min_score=args.ground_min_score,
+        model=args.model,
+    )
+
+    if args.offline is False and not config.has_api_key():
+        print(
+            "ERRO: DEEPSEEK_API_KEY não definida.\n"
+            f"Crie {config.REPO_ROOT / '.env'} a partir de .env.example, ou rode com --offline.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    report = pipeline.run(options)
+    print(report.render())
+
+    if report.payload is None:
+        return EXIT_OK
+
+    destination = Path(args.output) if args.output else config.REPO_ROOT / f"results_{args.siren}.json"
+    if destination.resolve() == config.RESULTS_PATH.resolve():
+        print(
+            "\nRECUSADO: o destino é o results.json da raiz, que é o artefato de entrega.\n"
+            "Use --output com outro nome para não sobrescrever o gabarito.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    written = pipeline.write_payload(report.payload, destination)
+    print(f"\nArquivo escrito em: {written}")
+    return EXIT_OK
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    if args.list_sirens:
+        return _cmd_list_sirens()
+
+    if args.audit:
+        return _cmd_audit(Path(args.audit))
+
+    if not args.siren:
+        parser.error("--siren é obrigatório (ou use --list-sirens / --audit)")
+
+    if args.ocr_errors:
+        return _cmd_ocr_errors(args.siren, args.kind, args.benchmark)
+
+    if args.benchmark:
+        return _cmd_benchmark(Path(args.benchmark), args.kind)
+
+    if args.triage:
+        return _cmd_triage(args.siren, args.kind, args.min_page_score)
+
+    if args.ground:
+        return _cmd_ground(args.ground, args.siren, args.doc, args.page)
+
+    return _cmd_run(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

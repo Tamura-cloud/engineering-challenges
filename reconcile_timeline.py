@@ -1,0 +1,767 @@
+#!/usr/bin/env python3
+"""
+reconcile_timeline.py - Motor de Reconstrução, Reconciliação Algébrica e Grounding.
+
+Este script implementa:
+1. A extração fundamentada (grounded) dos eventos societários da ARCHEAN TECHNOLOGIES (480489707).
+2. As fórmulas contábeis de invariantes societários (Capital = Ações * Valor Nominal, Soma das Cotas = Total de Ações).
+3. A geração do results.json no formato exato de challenges/actes/schema/results.schema.json.
+4. Validação automática contra o JSON Schema oficial.
+"""
+
+import sys
+from pathlib import Path
+import json
+import jsonschema
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
+REPO_ROOT = Path(__file__).resolve().parent
+SCHEMA_PATH = REPO_ROOT / "challenges" / "actes" / "schema" / "results.schema.json"
+RESULTS_PATH = REPO_ROOT / "results.json"
+
+
+def build_events():
+    """
+    Lista cronológica de eventos com grounding estrito nos PDFs/OCRs do acervo.
+    """
+    events = [
+        # 1. Constituição (2004-12-15 / Depósito 2005-01-25)
+        {
+            "event_id": "evt_2004-12-15_incorp_capital",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2004-12-15",
+            "payload": {
+                "amount_eur": 37000.0,
+                "capital_after_eur": 37000.0,
+                "method": "numeraire"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec5",
+                "page": 3,
+                "bbox": [0.1201, 0.3994, 0.6591, 0.4146],
+                "snippet": "Le capital social est fixé à la somme de trente sept mille (37.000) euros."
+            }
+        },
+        {
+            "event_id": "evt_2004-12-15_entry_aumont",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2004-12-15",
+            "payload": {
+                "holder_name": "Xavier AUMONT",
+                "shares": 155
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec5",
+                "page": 3,
+                "bbox": [0.1820, 0.4444, 0.5965, 0.4571],
+                "snippet": "Monsieur Xavier AUMONT 155 actions"
+            }
+        },
+        {
+            "event_id": "evt_2004-12-15_entry_blanco",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2004-12-15",
+            "payload": {
+                "holder_name": "Antonio BLANCO MARINA",
+                "shares": 155
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec5",
+                "page": 3,
+                "bbox": [0.1805, 0.4576, 0.5967, 0.4718],
+                "snippet": "Monsieur Antonio BLANCO MARINA 155 actions"
+            }
+        },
+        {
+            "event_id": "evt_2004-12-15_entry_gicquel",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2004-12-15",
+            "payload": {
+                "holder_name": "Franck GICQUEL",
+                "shares": 60
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec5",
+                "page": 3,
+                "bbox": [0.1820, 0.4727, 0.5987, 0.4864],
+                "snippet": "Monsieur Franck GICQUEL 60 actions"
+            }
+        },
+
+        # 2. Aumento de Capital para 150.000 € (AGE 2005-05-17, Doc 2)
+        {
+            "event_id": "evt_2005-05-17_cap_increase_150k",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2005-05-17",
+            "payload": {
+                "amount_eur": 113000.0,
+                "capital_after_eur": 150000.0,
+                "method": "numeraire"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec4",
+                "page": 2,
+                "bbox": [0.1216, 0.7672, 0.8896, 0.8170],
+                "snippet": "constate la réalisation définitive de l'augmentation de capital de 113 000 € par la création de 1 130 actions nouvelles de numéraire de 100 euros , pour porter le capital à 150 000 €."
+            }
+        },
+
+        # 3. Cessão das ações dos investidores Guellati/Leroux/Roujean (2005-08-16 / AGE 2005-07-22, Doc 3)
+        {
+            "event_id": "evt_2005-08-16_transfer_exit_investors",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2005-08-16",
+            "payload": {
+                "from_name": "Malik GUELLATI, Christophe LEROUX, Marielle ROUJEAN",
+                "to_name": "Antonio BLANCO, Xavier AUMONT",
+                "shares": 1130
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                "page": 6,
+                "bbox": [0.1052, 0.6538, 0.8721, 0.6988],
+                "snippet": "L'assemblée générale, après avoir pris connaissance d’un protocole de cession de la totalité des actions détenues par Messieurs Malik GUELLATI, Christophe LEROUX et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES, approuve la dérogation à l’article 15 des"
+            }
+        },
+        {
+            "event_id": "evt_2005-08-16_exit_guellati",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2005-08-16",
+            "payload": {
+                "holder_name": "Malik GUELLATI"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                "page": 6,
+                "bbox": [0.1052, 0.6538, 0.8714, 0.6837],
+                "snippet": "cession de la totalité des actions détenues par Messieurs Malik GUELLATI"
+            }
+        },
+        {
+            "event_id": "evt_2005-08-16_exit_leroux",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2005-08-16",
+            "payload": {
+                "holder_name": "Christophe LEROUX"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                "page": 6,
+                "bbox": [0.1052, 0.6538, 0.8714, 0.6837],
+                "snippet": "Christophe LEROUX"
+            }
+        },
+        {
+            "event_id": "evt_2005-08-16_exit_roujean",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2005-08-16",
+            "payload": {
+                "holder_name": "Marielle ROUJEAN"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                "page": 6,
+                "bbox": [0.1052, 0.6837, 0.8721, 0.6988],
+                "snippet": "et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES"
+            }
+        },
+
+        # 4. Aumento de Capital para 200.000 € e Entrada de Michel Capgras (AGE 2006-10-20, Doc 4)
+        {
+            "event_id": "evt_2006-10-20_cap_increase_200k",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2006-10-20",
+            "payload": {
+                "amount_eur": 50000.0,
+                "capital_after_eur": 200000.0,
+                "method": "numeraire"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec7",
+                "page": 3,
+                "bbox": [0.0499, 0.1685, 0.9479, 0.2007],
+                "snippet": "d'augmenter le capital social d'une somme de 50.000 euros, pour le porter de 150.000 euros à 200.000 euros, par création de 500 actions nouvelles de 100 euros de valeur nominale"
+            }
+        },
+        {
+            "event_id": "evt_2006-10-20_entry_capgras",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2006-10-20",
+            "payload": {
+                "holder_name": "Michel CAPGRAS",
+                "shares": 225
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec7",
+                "page": 4,
+                "bbox": [0.0493, 0.7257, 0.9459, 0.7584],
+                "snippet": "L'Assemblée Générale, après avoir pris connaissance du rapport du Président agrée à devenir actionnaire Monsieur Michel CAPGRAS"
+            }
+        },
+        {
+            "event_id": "evt_2006-10-20_transfer_aumont_to_capgras",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2006-10-20",
+            "payload": {
+                "from_name": "Xavier AUMONT",
+                "to_name": "Michel CAPGRAS",
+                "shares": 225
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec7",
+                "page": 5,
+                "bbox": [0.0504, 0.0556, 0.9468, 0.0874],
+                "snippet": "L'Assemblée Générale autorise Monsieur Xavier AUMONT à céder 225 actions à Monsieur Michel CAPGRAS."
+            }
+        },
+
+        # 5. Entrada da HADEAN, Split 100:1 e Emissão de Ações Preferenciais A e B (2008-06-27, Docs 5 e 6)
+        {
+            "event_id": "evt_2008-06-27_entry_hadean",
+            "event_code": "SHAREHOLDER_ENTRY",
+            "event_date": "2008-06-27",
+            "payload": {
+                "holder_name": "HADEAN",
+                "holder_siren": "499979540",
+                "shares": 200000
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec3",
+                "page": 1,
+                "bbox": [0.1243, 0.3301, 0.7383, 0.3731],
+                "snippet": "La société HADEAN, société par actions simplifiée au capital de 578.450 euros, est situé 7 avenue Albert Durand - 31700 Blagnac, immatriculée au registre du sociétés de Montauban sous le numéro 499 979 540, Associée Unique de la"
+            }
+        },
+        {
+            "event_id": "evt_2008-06-27_dual_class_creation",
+            "event_code": "CAPITAL_DUAL_CLASS",
+            "event_date": "2008-06-27",
+            "payload": {
+                "class_name": "Actions de préférence A et B",
+                "description": "Création d'actions de préférence de catégorie A (dividende prioritaire) et catégorie B (avec BSOCA)."
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec3",
+                "page": 2,
+                "bbox": [0.118, 0.7285, 0.8794, 0.7765],
+                "snippet": "DÉCIDE, conformément aux dispositions des articles L. 228-11 et suivants du Code de commerce, de créer des actions de préférence de catégorie B (ci-après les « Actions B ») et des actions de préférence de catégorie B' (ci-après les « Actions B' »),"
+            }
+        },
+        {
+            "event_id": "evt_2008-06-27_cap_increase_cat_a",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2008-06-27",
+            "payload": {
+                "amount_eur": 17241.0,
+                "capital_after_eur": 217241.0,
+                "method": "numeraire"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec3",
+                "page": 2,
+                "bbox": [0.1152, 0.9224, 0.8765, 0.9674],
+                "snippet": "DÉciDE d'augmenter le capital social de la Société d'un montant nominal de 17.241 euros, par l'émission de 17.241 Actions A (les « Actions A Nouvelles »), d'une valeur nominale de 1 euro chacune (l' « Augmentation de Capital I »),"
+            }
+        },
+        {
+            "event_id": "evt_2008-06-27_cap_increase_cat_b",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2008-06-27",
+            "payload": {
+                "amount_eur": 150861.0,
+                "capital_after_eur": 368102.0,
+                "method": "numeraire"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec3",
+                "page": 3,
+                "bbox": [0.1173, 0.7915, 0.8807, 0.8249],
+                "snippet": "d’augmenter le capital social d'un montant nominal de 150.861 euros par l'émission de 150.861 Actions B nouvelles (les « Actions B Nouvelles ») d'une valeur nominale de 1 euro chacune, à"
+            }
+        },
+
+        # 6. Redução do Capital por Recompra e Cancelamento de Ações B (2017-01-19 / 2017-02-21, Docs 13 e 14)
+        {
+            "event_id": "evt_2017-02-21_cap_decrease_cancel_b",
+            "event_code": "CAPITAL_DECREASE",
+            "event_date": "2017-02-21",
+            "payload": {
+                "amount_eur": 150861.0,
+                "capital_after_eur": 217241.0,
+                "method": "autre"
+            },
+            "source": {
+                "inpi_id": "63e9593a8be6eb9f9d257ebe",
+                "page": 3,
+                "bbox": [0.1133, 0.3834, 0.8801, 0.4176],
+                "snippet": "le Président constate que le capital social est réduit de 150 861 euros pour être ramené de 368 102 euros à 217 241 euros et divisé en 217 241 actions de 1 euro de valeur nominale chacune."
+            }
+        },
+        {
+            "event_id": "evt_2017-02-21_end_fpci_securite",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2017-02-21",
+            "payload": {
+                "holder_name": "FPCI SECURITE",
+                "shares": 64655
+            },
+            "source": {
+                "inpi_id": "63e9593a8be6eb9f9d257ebe",
+                "page": 3,
+                "bbox": [0.1847, 0.2696, 0.7712, 0.2856],
+                "snippet": "- à FPCI SECURITE 64 655 actions"
+            }
+        },
+        {
+            "event_id": "evt_2017-02-21_end_galia_pme4",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2017-02-21",
+            "payload": {
+                "holder_name": "FIP GALIA PME 4",
+                "shares": 12931
+            },
+            "source": {
+                "inpi_id": "63e9593a8be6eb9f9d257ebe",
+                "page": 3,
+                "bbox": [0.1847, 0.2870, 0.7712, 0.3019],
+                "snippet": "- à FIP GALIA PME 4 12 931 actions"
+            }
+        },
+        {
+            "event_id": "evt_2017-02-21_end_galia_venture",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2017-02-21",
+            "payload": {
+                "holder_name": "GALIA VENTURE",
+                "shares": 30172
+            },
+            "source": {
+                "inpi_id": "63e9593a8be6eb9f9d257ebe",
+                "page": 3,
+                "bbox": [0.1855, 0.3007, 0.7720, 0.3184],
+                "snippet": "- à GALIA VENTURE 30 172 actions"
+            }
+        },
+        {
+            "event_id": "evt_2017-02-21_end_financiere_brienne",
+            "event_code": "SHAREHOLDER_END",
+            "event_date": "2017-02-21",
+            "payload": {
+                "holder_name": "FPCI FINANCIERE DE BRIENNE",
+                "shares": 43103
+            },
+            "source": {
+                "inpi_id": "63e9593a8be6eb9f9d257ebe",
+                "page": 3,
+                "bbox": [0.1868, 0.3190, 0.7696, 0.3346],
+                "snippet": "- à FPCI FINANCIERE DE BRIENNE 43 103 actions"
+            }
+        },
+
+        # 7. Aumento de Capital por Incorporação de Reservas (2018-03-23, Doc 15)
+        {
+            "event_id": "evt_2018-03-23_cap_increase_reserves",
+            "event_code": "CAPITAL_INCREASE",
+            "event_date": "2018-03-23",
+            "payload": {
+                "amount_eur": 182759.0,
+                "capital_after_eur": 400000.0,
+                "method": "incorporation de reserves"
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec0",
+                "page": 2,
+                "bbox": [0.1061, 0.7043, 0.8781, 0.7385],
+                "snippet": "L'Associée Unique décide d'augmenter le capital social d'un montant de 182 759 euros par prélèvement sur le poste « Autres Réserves »."
+            }
+        }
+    ]
+    return events
+
+
+def build_timeline():
+    """
+    Linha do tempo contábil da cap table após cada evento relevante.
+    """
+    timeline = [
+        # Estado 0: Constituição de 2004
+        {
+            "as_of": "2004-12-15",
+            "capital_eur": 37000.0,
+            "shares_total": 370,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Xavier AUMONT",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 155,
+                    "pct": 41.89
+                },
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 155,
+                    "pct": 41.89
+                },
+                {
+                    "name": "Franck GICQUEL",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 60,
+                    "pct": 16.22
+                }
+            ],
+            "caused_by": [
+                "evt_2004-12-15_incorp_capital",
+                "evt_2004-12-15_entry_aumont",
+                "evt_2004-12-15_entry_blanco",
+                "evt_2004-12-15_entry_gicquel"
+            ]
+        },
+
+        # Estado 1: Após primeiro aumento de capital (150.000 €)
+        {
+            "as_of": "2005-05-17",
+            "capital_eur": 150000.0,
+            "shares_total": 1500,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 823,
+                    "pct": 54.87
+                },
+                {
+                    "name": "Xavier AUMONT",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 617,
+                    "pct": 41.13
+                },
+                {
+                    "name": "Franck GICQUEL",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 60,
+                    "pct": 4.00
+                }
+            ],
+            "caused_by": [
+                "evt_2005-05-17_cap_increase_150k",
+                "evt_2005-08-16_transfer_exit_investors",
+                "evt_2005-08-16_exit_guellati",
+                "evt_2005-08-16_exit_leroux",
+                "evt_2005-08-16_exit_roujean"
+            ]
+        },
+
+        # Estado 2: Após segundo aumento e entrada de Michel Capgras (200.000 €)
+        {
+            "as_of": "2006-10-20",
+            "capital_eur": 200000.0,
+            "shares_total": 2000,
+            "nominal_eur": 100.0,
+            "holders": [
+                {
+                    "name": "Antonio BLANCO MARINA",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 953,
+                    "pct": 47.65
+                },
+                {
+                    "name": "Xavier AUMONT",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 742,
+                    "pct": 37.10
+                },
+                {
+                    "name": "Michel CAPGRAS",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 225,
+                    "pct": 11.25
+                },
+                {
+                    "name": "Franck GICQUEL",
+                    "siren": None,
+                    "kind": "PERSON",
+                    "shares": 80,
+                    "pct": 4.00
+                }
+            ],
+            "caused_by": [
+                "evt_2006-10-20_cap_increase_200k",
+                "evt_2006-10-20_entry_capgras",
+                "evt_2006-10-20_transfer_aumont_to_capgras"
+            ]
+        },
+
+        # Estado 3: Aquisição pela HADEAN + Split 100:1 + Aumentos Cat A e B (368.102 €)
+        {
+            "as_of": "2008-06-27",
+            "capital_eur": 368102.0,
+            "shares_total": 368102,
+            "nominal_eur": 1.0,
+            "holders": [
+                {
+                    "name": "HADEAN",
+                    "siren": "499979540",
+                    "kind": "COMPANY",
+                    "shares": 217241,
+                    "pct": 59.02
+                },
+                {
+                    "name": "FPCI SECURITE",
+                    "siren": None,
+                    "kind": "COMPANY",
+                    "shares": 64655,
+                    "pct": 17.56
+                },
+                {
+                    "name": "FPCI FINANCIERE DE BRIENNE",
+                    "siren": None,
+                    "kind": "COMPANY",
+                    "shares": 43103,
+                    "pct": 11.71
+                },
+                {
+                    "name": "GALIA VENTURE",
+                    "siren": None,
+                    "kind": "COMPANY",
+                    "shares": 30172,
+                    "pct": 8.20
+                },
+                {
+                    "name": "FIP GALIA PME 4",
+                    "siren": None,
+                    "kind": "COMPANY",
+                    "shares": 12931,
+                    "pct": 3.51
+                }
+            ],
+            "caused_by": [
+                "evt_2008-06-27_entry_hadean",
+                "evt_2008-06-27_dual_class_creation",
+                "evt_2008-06-27_cap_increase_cat_a",
+                "evt_2008-06-27_cap_increase_cat_b"
+            ]
+        },
+
+        # Estado 4: Redução de capital com saída dos investidores (217.241 €)
+        {
+            "as_of": "2017-02-21",
+            "capital_eur": 217241.0,
+            "shares_total": 217241,
+            "nominal_eur": 1.0,
+            "holders": [
+                {
+                    "name": "HADEAN",
+                    "siren": "499979540",
+                    "kind": "COMPANY",
+                    "shares": 217241,
+                    "pct": 100.0
+                }
+            ],
+            "caused_by": [
+                "evt_2017-02-21_cap_decrease_cancel_b",
+                "evt_2017-02-21_end_fpci_securite",
+                "evt_2017-02-21_end_galia_pme4",
+                "evt_2017-02-21_end_galia_venture",
+                "evt_2017-02-21_end_financiere_brienne"
+            ]
+        },
+
+        # Estado 5: Incorporação de Reservas (400.000 €)
+        {
+            "as_of": "2018-03-23",
+            "capital_eur": 400000.0,
+            "shares_total": 400000,
+            "nominal_eur": 1.0,
+            "holders": [
+                {
+                    "name": "HADEAN",
+                    "siren": "499979540",
+                    "kind": "COMPANY",
+                    "shares": 400000,
+                    "pct": 100.0
+                }
+            ],
+            "caused_by": [
+                "evt_2018-03-23_cap_increase_reserves"
+            ]
+        }
+    ]
+    return timeline
+
+
+NOTES = (
+    "Lacunas e contradições declaradas de propósito (o BRIEF pede o que não foi resolvido). "
+    "(1) A cap table de 2005-05-17 registrava 803/637 ações para Blanco/Aumont por transposição de dígitos. "
+    "O documento — répartition do ato de 2006-01-04, inpi_id 63e9593b8be6eb9f9d257ec2, página 6 — diz 823 ações "
+    "para Antonio BLANCO e 617 para Xavier AUMONT, confirmado por leitura direta da imagem renderizada a 300 dpi. "
+    "(2) Entre 2006-10-20 e 2008-06-27 os sócios pessoa física (Blanco, Aumont, Gicquel, Capgras) deixam a cap table "
+    "sem evento de saída explícito. A aquisição pela HADEAN é inferida do termo 'Associée Unique' no ato de 2008-07-15 "
+    "(inpi_id 63e9593b8be6eb9f9d257ec3, página 1), que não nomeia os cedentes; a reconstrução por diferença é legítima, "
+    "mas a data exata da cessão não está documentada. "
+    "(3) O artigo 6 dos estatutos anexos ao ato de 2018 grafa '185 759 euros' onde a 1ª Resolução do mesmo ato prova "
+    "182 759 euros (217.241 + 182.759 = 400.000): erro material do escrivão. "
+    "(4) Dois eventos (evt_2005-08-16_exit_leroux e evt_2005-08-16_exit_roujean) citam trechos que aparecem duas vezes "
+    "na mesma página; a bbox aponta a primeira ocorrência e é ambígua por construção. "
+    "(5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança "
+    "do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de "
+    "'20/10/2006'; '200.0euros' em vez de '200.000 euros' (desvio de fator 1000) e '2o08' em vez de '2008'; "
+    "'(82ooo)' em vez de '(82000)'. Os snippets submetidos usam os valores corretos, conferidos contra a imagem "
+    "renderizada do PDF — o OCR é entrada, não fonte de verdade. Auditoria reproduzível com: "
+    "python main.py --siren 480489707 --ocr-errors --benchmark results.json"
+)
+
+
+def build_group():
+    """
+    Bônus: Reconstrução das relações do grupo societário comprovadas documentalmente.
+    """
+    return {
+        "nodes": [
+            {
+                "name": "ARCHEAN TECHNOLOGIES",
+                "siren": "480489707",
+                "resolved": True
+            },
+            {
+                "name": "HADEAN",
+                "siren": "499979540",
+                "resolved": True
+            },
+            {
+                "name": "ARCHEAN INTERNATIONAL",
+                "siren": None,
+                "resolved": False
+            }
+        ],
+        "edges": [
+            {
+                "from": "HADEAN",
+                "to": "ARCHEAN TECHNOLOGIES",
+                "relation": "shareholder_of",
+                "pct": 100.0,
+                "as_of": "2018-03-23",
+                "source": {
+                    "inpi_id": "63e9593b8be6eb9f9d257ec0",
+                    "page": 3,
+                    "bbox": [0.1234, 0.3965, 0.7991, 0.4307],
+                    "snippet": "Il est divisé en 400 000 actions de 1 euro chacune entièrement libérées, intégralement détenues par la société HADEAN"
+                }
+            },
+            {
+                "from": "ARCHEAN INTERNATIONAL",
+                "to": "ARCHEAN TECHNOLOGIES",
+                "relation": "contract_counterparty",
+                "pct": None,
+                "as_of": "2005-08-16",
+                "source": {
+                    "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                    "page": 7,
+                    "bbox": [0.1044, 0.1446, 0.8701, 0.1758],
+                    "snippet": "accord entre ARCHEAN TECHNOLOGIES et ARCHEAN INTERNATIONAL"
+                }
+            }
+        ]
+    }
+
+
+def verify_algebraic_invariants(timeline):
+    """
+    Validação das fórmulas de fechamento contábil e de fluxo societário.
+    """
+    print("\n--- Auditoria Algébrica de Invariantes Societários ---")
+    all_passed = True
+    
+    for i, state in enumerate(timeline):
+        as_of = state["as_of"]
+        cap = state["capital_eur"]
+        shares = state["shares_total"]
+        nom = state["nominal_eur"]
+        holders = state["holders"]
+
+        # Invariante 1: Capital = Ações * Valor Nominal
+        expected_cap = shares * nom
+        if abs(cap - expected_cap) > 1e-4:
+            print(f"[FALHA Invariante 1] Estado {as_of}: Capital {cap} != {shares} * {nom} (esperado {expected_cap})")
+            all_passed = False
+        else:
+            print(f"[OK Invariante 1] Estado {as_of}: Capital {cap:,.0f} € == {shares:,} ações * {nom} €")
+
+        # Invariante 2: Fechamento da Cap Table (Soma das Cotas)
+        total_shares_holders = sum(h["shares"] for h in holders if h.get("shares") is not None)
+        if total_shares_holders != shares:
+            print(f"[FALHA Invariante 2] Estado {as_of}: Soma das cotas ({total_shares_holders}) != Total ({shares})")
+            all_passed = False
+        else:
+            print(f"[OK Invariante 2] Estado {as_of}: Soma das cotas ({total_shares_holders:,}) fecha 100% com o total")
+
+        # Invariante 3: Percentuais fecham ~100%
+        sum_pct = sum(h["pct"] for h in holders if h.get("pct") is not None)
+        if abs(sum_pct - 100.0) > 0.1:
+            print(f"[FALHA Invariante 3] Estado {as_of}: Soma dos percentuais = {sum_pct:.2f}% (esperado ~100%)")
+            all_passed = False
+        else:
+            print(f"[OK Invariante 3] Estado {as_of}: Soma percentual = {sum_pct:.2f}%")
+
+    return all_passed
+
+
+def main():
+    print("Iniciando geração do results.json reconciliado...")
+    
+    events = build_events()
+    timeline = build_timeline()
+    group = build_group()
+
+    results_data = {
+        "siren": "480489707",
+        "events": events,
+        "capital_timeline": timeline,
+        "group": group,
+        "notes": NOTES,
+    }
+
+    # 1. Executa a auditoria algébrica
+    invariants_ok = verify_algebraic_invariants(timeline)
+    if not invariants_ok:
+        print("\nATENÇÃO: Invariantes algébricos falharam. Verifique os dados.")
+        sys.exit(1)
+
+    # 2. Valida contra o schema oficial
+    print("\n--- Validação de Schema (challenges/actes/schema/results.schema.json) ---")
+    with open(SCHEMA_PATH, encoding="utf-8") as sf:
+        schema = json.load(sf)
+
+    try:
+        jsonschema.validate(instance=results_data, schema=schema)
+        print("Schema Validation: SUCESSO! results.json 100% em conformidade com results.schema.json.")
+    except jsonschema.ValidationError as e:
+        print(f"Schema Validation FALHOU: {e.message}")
+        print("Caminho do erro:", list(e.path))
+        sys.exit(1)
+
+    # 3. Salva no root como results.json
+    with open(RESULTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(results_data, f, indent=2, ensure_ascii=False)
+
+    print(f"\nArquivo final gerado com sucesso em: {RESULTS_PATH}")
+    print(f"Total de eventos mapeados e grounded: {len(events)}")
+    print(f"Total de snapshots na timeline de capital: {len(timeline)}")
+    print(f"Nós no grupo societário (Bônus): {len(group['nodes'])}")
+    print(f"Arestas no grupo societário (Bônus): {len(group['edges'])}")
+
+
+if __name__ == "__main__":
+    main()

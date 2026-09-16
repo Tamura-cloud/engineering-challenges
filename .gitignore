@@ -1,0 +1,45 @@
+# Arquivos de ambiente e segredos (NUNCA COMMITTAR)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.token
+
+# Python & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SO & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Imagens de teste locais
+visualizacao.png
+teste.png
+
+# ---------------------------------------------------------------------------
+# Corpus de terceiros — NUNCA COMMITTAR
+# ---------------------------------------------------------------------------
+# data/ tem ~372 MB e contém atos societários reais, com nomes de pessoas
+# físicas. O NOTICE.md do próprio acervo pede: "Do not redistribute them".
+# Fica fora do controle de versão por tamanho E por licença.
+data/
+
+# ---------------------------------------------------------------------------
+# Contexto pessoal do candidato — não faz parte da entrega
+# ---------------------------------------------------------------------------
+.agents/
+instrucao_deepseek.txt
+
+# Snapshot antigo dos scripts, anterior a src/ e main.py. Mantido em disco
+# como backup, fora do repositório, para não confundir o revisor.
+arquivos_python.zip
+
+# Recortes de páginas gerados pelo relatório de verificação visual. São
+# derivados dos PDFs de terceiros: versionar apenas de forma intencional.
+reports/
