@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from . import grounding
-from .ocr_loader import Document, list_documents
+from .ocr_loader import Document, list_documents, list_sirens
 
 _MAX_RENDER_PX = 1500
 _MIN_DPI = 80
@@ -150,26 +150,75 @@ def ocr_text_in_box(document: Document, page: int, bbox: Sequence[float]) -> str
     return " ".join(picked)
 
 
-def collect_evidence(payload: dict[str, Any], kind: str = "actes") -> list[Evidence]:
-    """Monta a evidência visual de cada evento do arquivo."""
+class _Corpus:
+    """Índice do acervo, com busca fora da pasta do sujeito quando preciso.
+
+    O BRIEF avisa que algumas dessas relações *"do not appear in the company's own
+    documents"*. Um ato da controladora pode ser a única prova de uma saída na cap
+    table da Archean; um relatório que só olhasse a pasta da Archean deixaria esses
+    eventos sem cartão — e o leitor concluiria que a citação não tem prova, quando
+    a prova existe, só está em outra pasta.
+
+    A segunda varredura é preguiçosa de propósito: só custa quando algum documento
+    realmente está fora.
+    """
+
+    def __init__(self, siren: str, kind: str) -> None:
+        self.siren = siren
+        self.kind = kind
+        self.primary = {
+            document.doc_id: document for document in list_documents(siren, kind)
+        }
+        self._elsewhere: dict[str, Document] | None = None
+
+    def get(self, doc_id: str) -> Document | None:
+        document = self.primary.get(doc_id)
+        if document is not None:
+            return document
+        if self._elsewhere is None:
+            self._elsewhere = {
+                document.doc_id: document
+                for other in list_sirens()
+                if other != self.siren
+                for document in list_documents(other, self.kind)
+            }
+        return self._elsewhere.get(doc_id)
+
+
+def _survey(
+    payload: dict[str, Any], kind: str = "actes"
+) -> tuple[list[Evidence], list[tuple[str, str]]]:
+    """Coleta a evidência de cada evento e registra o que não pôde ser mostrado.
+
+    Evento sem cartão é lacuna do relatório, e lacuna silenciosa é pior que lacuna
+    declarada: quem confere precisa saber que faltou, senão lê uma soma menor como
+    se fosse o total.
+    """
     siren = str(payload.get("siren") or "")
-    documents = {document.doc_id: document for document in list_documents(siren, kind)}
+    corpus = _Corpus(siren, kind)
 
     items: list[Evidence] = []
+    missing: list[tuple[str, str]] = []
     for event in payload.get("events") or []:
+        event_id = str(event.get("event_id") or "?")
         source = event.get("source") or {}
         doc_id = str(source.get("inpi_id") or "")
         page = source.get("page")
         bbox = source.get("bbox") or []
-        document = documents.get(doc_id)
-        if document is None or not isinstance(page, int) or len(bbox) != 4:
+
+        document = corpus.get(doc_id)
+        if document is None:
+            missing.append((event_id, f"documento {doc_id or '?'} ausente do acervo"))
+            continue
+        if not isinstance(page, int) or len(bbox) != 4:
+            missing.append((event_id, "citação sem página ou bbox declarada"))
             continue
 
         snippet = str(source.get("snippet") or "")
         match = grounding.ground_document(document, snippet, page=page, min_score=0.0)
         items.append(
             Evidence(
-                event_id=str(event.get("event_id") or "?"),
+                event_id=event_id,
                 event_code=str(event.get("event_code") or "?"),
                 event_date=str(event.get("event_date") or "?"),
                 payload=event.get("payload") or {},
@@ -184,7 +233,12 @@ def collect_evidence(payload: dict[str, Any], kind: str = "actes") -> list[Evide
                 ocr_in_box=ocr_text_in_box(document, page, bbox),
             )
         )
-    return items
+    return items, missing
+
+
+def collect_evidence(payload: dict[str, Any], kind: str = "actes") -> list[Evidence]:
+    """Monta a evidência visual de cada evento do arquivo."""
+    return _survey(payload, kind=kind)[0]
 
 
 _CSS = """
@@ -289,10 +343,11 @@ def _card(evidence: Evidence) -> str:
 
 def build_report(payload: dict[str, Any], destination: Path, kind: str = "actes") -> Path:
     """Gera o HTML autocontido de verificação visual."""
-    items = collect_evidence(payload, kind=kind)
+    items, missing = _survey(payload, kind=kind)
     exact = sum(1 for item in items if item.reproducible)
     siren = html.escape(str(payload.get("siren") or ""))
     notes = str(payload.get("notes") or "")
+    eventos = len(items) + len(missing)
 
     cards = "\n".join(_card(item) for item in items)
     notes_block = (
@@ -300,6 +355,18 @@ def build_report(payload: dict[str, Any], destination: Path, kind: str = "actes"
         if notes
         else ""
     )
+    missing_block = ""
+    if missing:
+        rows = "\n".join(
+            f"<li><code>{html.escape(event_id)}</code> — {html.escape(reason)}</li>"
+            for event_id, reason in missing
+        )
+        missing_block = (
+            f'<h2>Eventos sem cartão neste relatório ({len(missing)})</h2>'
+            f'<div class="notes"><p>Estes eventos existem no arquivo mas não têm '
+            f'evidência renderizada aqui. O motivo está declarado em cada linha.</p>'
+            f"<ul>{rows}</ul></div>"
+        )
 
     document = f"""<!doctype html>
 <html lang="pt-BR">
@@ -314,12 +381,13 @@ def build_report(payload: dict[str, Any], destination: Path, kind: str = "actes"
   o OCR serve apenas para localizar.</p>
 
   <div class="summary">
-    <div class="stat"><b>{len(items)}</b><span>alegações</span></div>
+    <div class="stat"><b>{len(items)}</b><span>de {eventos} eventos com cartão</span></div>
     <div class="stat"><b>{exact}</b><span>citação exata</span></div>
     <div class="stat"><b>{len(items) - exact}</b><span>conferir a olho</span></div>
   </div>
 
   {cards}
+  {missing_block}
   {notes_block}
 
   <footer>Gerado em {datetime.now():%Y-%m-%d %H:%M} por <code>src/report_html.py</code>.
