@@ -87,6 +87,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="gera o HTML da linha do tempo (composição do capital estado a estado) de um results.json",
     )
     parser.add_argument(
+        "--sem-imagens",
+        action="store_true",
+        help="na linha do tempo, não embutir os recortes das páginas (arquivo bem menor)",
+    )
+    parser.add_argument(
+        "--margem",
+        type=float,
+        default=None,
+        metavar="FRAÇÃO",
+        help="margem do recorte em volta da caixa, em fração da página (padrão 0.03)",
+    )
+    parser.add_argument(
         "--extract",
         action="store_true",
         help="lê o OCR de --siren pela API, propõe os eventos e gera o results_<siren>.json",
@@ -264,7 +276,12 @@ def _cmd_report(results_path: Path, output: str | None) -> int:
     return EXIT_OK
 
 
-def _cmd_timeline(results_path: Path, output: str | None) -> int:
+def _cmd_timeline(
+    results_path: Path,
+    output: str | None,
+    margin: float | None,
+    embed_images: bool,
+) -> int:
     """Gera o HTML da linha do tempo a partir de um results.json."""
     import json
 
@@ -277,10 +294,14 @@ def _cmd_timeline(results_path: Path, output: str | None) -> int:
     destination = (
         Path(output) if output else config.REPO_ROOT / "reports" / f"timeline_{siren}.html"
     )
-    written = report_timeline.build_timeline(payload, destination)
+    options: dict[str, object] = {"embed_images": embed_images}
+    if margin is not None:
+        options["margin"] = margin
+    written = report_timeline.build_timeline(payload, destination, **options)
     states = len(payload.get("capital_timeline") or [])
+    size_kb = written.stat().st_size / 1024.0
     print(f"{states} estados desenhados")
-    print(f"HTML escrito em: {written}")
+    print(f"HTML escrito em: {written} ({size_kb:,.0f} KB)".replace(",", " "))
     return EXIT_OK
 
 
@@ -398,7 +419,9 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_report(Path(args.report_html), args.output)
 
     if args.timeline_html:
-        return _cmd_timeline(Path(args.timeline_html), args.output)
+        return _cmd_timeline(
+            Path(args.timeline_html), args.output, args.margem, not args.sem_imagens
+        )
 
     if args.extract:
         if not args.siren:

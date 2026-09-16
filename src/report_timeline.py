@@ -19,7 +19,16 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
+
+from .ocr_loader import Document, list_documents
+from .report_html import render_crop
+
+# Margem do recorte, em fração da página, para além da bbox. Generosa de propósito:
+# um recorte colado na caixa prova que o texto existe, mas não *onde* ele está. Com
+# contexto em volta dá para ver se a frase é corpo do ato, cabeçalho ou carimbo —
+# e é isso que separa "a frase está nesta página" de "a frase é o que eu digo".
+DEFAULT_MARGIN = 0.03
 
 # Cores distinguíveis também em impressão P&B, por ordem de contraste.
 _PALETTE = (
@@ -189,7 +198,46 @@ def _composition(state: dict[str, Any]) -> str:
     )
 
 
-def _event_block(event: dict[str, Any]) -> str:
+def _crop_figure(
+    event: dict[str, Any],
+    documents: Mapping[str, Document] | None,
+    margin: float,
+) -> str:
+    """O recorte da página, ao lado da citação.
+
+    Nunca levanta: PDF ausente, página inválida ou geometria estranha viram uma
+    nota em vez de derrubar a geração. A página de texto tem de sair de qualquer jeito.
+    """
+    if not documents:
+        return ""
+    source = event.get("source") or {}
+    document = documents.get(str(source.get("inpi_id") or ""))
+    page = source.get("page")
+    bbox = source.get("bbox")
+    if document is None:
+        return '<div class="noimg">documento ausente do acervo em disco</div>'
+    if page is None or not bbox:
+        return '<div class="noimg">sem página ou sem bbox: nada a recortar</div>'
+    try:
+        png = render_crop(document, int(page), bbox, margin=margin)
+    except Exception as exc:  # noqa: BLE001 — degradar, nunca quebrar
+        return f'<div class="noimg">recorte indisponível ({html.escape(type(exc).__name__)})</div>'
+    if not png:
+        return '<div class="noimg">PDF ausente em disco — recorte não gerado</div>'
+    return (
+        f'<figure class="crop">'
+        f'<img alt="recorte da página {html.escape(str(page))}" '
+        f'src="data:image/png;base64,{png}">'
+        f"<figcaption>página {html.escape(str(page))} · "
+        f"margem {margin:g} além da caixa</figcaption></figure>"
+    )
+
+
+def _event_block(
+    event: dict[str, Any],
+    documents: Mapping[str, Document] | None = None,
+    margin: float = DEFAULT_MARGIN,
+) -> str:
     payload = _payload_rows(event.get("payload") or {})
     rows = "".join(
         f"<tr><td>{html.escape(key)}</td><td><code>{html.escape(value)}</code></td></tr>"
@@ -209,12 +257,21 @@ def _event_block(event: dict[str, Any]) -> str:
     quote = (
         f'<blockquote class="quote">{html.escape(snippet)}</blockquote>' if snippet else ""
     )
+    figure = _crop_figure(event, documents, margin)
+    info = (
+        f'<table class="payload">{rows}</table>{quote}'
+        f'<div class="src">{html.escape(where)}</div>'
+    )
+    body = (
+        f'<div class="evtbody">{figure}<div class="evtinfo">{info}</div></div>'
+        if figure
+        else info
+    )
     return (
         f'<div class="evt">'
         f'<div class="evthead"><code>{html.escape(str(event.get("event_code") or ""))}</code>'
         f'<span class="eid">{html.escape(str(event.get("event_id") or ""))}</span></div>'
-        f'<table class="payload">{rows}</table>{quote}'
-        f'<div class="src">{html.escape(where)}</div>'
+        f"{body}"
         f"</div>"
     )
 
@@ -223,6 +280,8 @@ def _state_block(
     state: dict[str, Any],
     previous: dict[str, Any] | None,
     events_by_id: dict[str, dict[str, Any]],
+    documents: Mapping[str, Document] | None = None,
+    margin: float = DEFAULT_MARGIN,
 ) -> str:
     date = str(state.get("as_of") or "—")
     capital = _fmt_eur(state.get("capital_eur"))
@@ -234,7 +293,7 @@ def _state_block(
         for eid in (state.get("caused_by") or [])
         if eid in events_by_id
     ]
-    blocks = "".join(_event_block(event) for event in caused)
+    blocks = "".join(_event_block(event, documents, margin) for event in caused)
     details = (
         f'<details><summary>{len(caused)} evento(s) causaram este estado</summary>'
         f"{blocks}</details>"
@@ -328,6 +387,18 @@ summary:hover { background: #fbfbfc; }
 .evthead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .evthead code { font-weight: 600; }
 .eid { font: 11.5px ui-monospace, Consolas, monospace; color: #6b7280; }
+.evtbody { display: grid; grid-template-columns: minmax(260px, 40%) 1fr; gap: 18px;
+           align-items: start; }
+@media (max-width: 900px) { .evtbody { grid-template-columns: 1fr; } }
+.evtinfo { min-width: 0; }
+.crop { margin: 0; }
+.crop img { width: 100%; display: block; background: #fff; border: 1px solid #d8dce2;
+            border-radius: 6px; }
+.crop figcaption { margin-top: 6px; color: #6b7280; font: 11.5px ui-monospace, Consolas, monospace; }
+.noimg { border: 1px dashed #d8dce2; border-radius: 6px; padding: 22px 12px; color: #6b7280;
+         font-size: 12px; text-align: center; }
+.notice { background: #fff8e6; border: 1px solid #f0e2bd; border-radius: 8px;
+          padding: 11px 14px; font-size: 13px; margin: 0 0 22px; }
 .payload { border-collapse: collapse; margin-bottom: 8px; }
 .payload td { padding: 2px 0; vertical-align: top; }
 .payload td:first-child { color: #5b6472; width: 170px; font-size: 12.5px; }
@@ -343,9 +414,42 @@ footer { margin-top: 36px; color: #6b7280; font-size: 12px; }
 """
 
 
-def build_timeline(payload: dict[str, Any], destination: Path) -> Path:
-    """Escreve o HTML da linha do tempo e devolve o caminho gravado."""
+def _load_corpus(siren: str, kind: str) -> dict[str, Document]:
+    """Carrega o acervo, se estiver em disco.
+
+    `data/` não é versionado — 372 MB de documentos de terceiros que o próprio
+    NOTICE.md pede para não redistribuir. Então quem clonar o repositório não tem
+    PDF nenhum, e isso não é falha: é o caso esperado. A ausência só desliga as
+    imagens.
+    """
+    if not siren:
+        return {}
+    try:
+        return {doc.doc_id: doc for doc in list_documents(siren, kind)}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def build_timeline(
+    payload: dict[str, Any],
+    destination: Path,
+    documents: Mapping[str, Document] | None = None,
+    margin: float = DEFAULT_MARGIN,
+    kind: str = "actes",
+    embed_images: bool = True,
+) -> Path:
+    """Escreve o HTML da linha do tempo e devolve o caminho gravado.
+
+    Com o acervo em disco, cada evento sai com o recorte da página ao lado da
+    citação — a alegação e a prova visual na mesma tela. Sem o acervo, sai só o
+    texto: a página continua válida, apenas não se prova sozinha.
+    """
     states = payload.get("capital_timeline") or []
+    siren_raw = str(payload.get("siren") or "")
+    if not embed_images:
+        documents = {}
+    elif documents is None:
+        documents = _load_corpus(siren_raw, kind)
     events = payload.get("events") or []
     events_by_id = {
         str(event.get("event_id")): event
@@ -364,11 +468,26 @@ def build_timeline(payload: dict[str, Any], destination: Path) -> Path:
     blocks: list[str] = []
     previous: dict[str, Any] | None = None
     for state in states:
-        blocks.append(_state_block(state, previous, events_by_id))
+        blocks.append(_state_block(state, previous, events_by_id, documents, margin))
         previous = state
 
-    siren = html.escape(str(payload.get("siren") or "—"))
+    siren = html.escape(siren_raw or "—")
     span = f"{dates[0]} → {dates[-1]}" if dates else "—"
+
+    images_note = ""
+    if not documents:
+        reason = (
+            "os recortes foram desligados a pedido"
+            if not embed_images
+            else f"o acervo <code>data/{html.escape(siren_raw or '<siren>')}"
+            f"/{html.escape(kind)}/</code> não está em disco"
+        )
+        images_note = (
+            f'<p class="notice">Página gerada <b>sem recortes</b>: {reason}. '
+            "O corpus não é versionado, então fora da máquina onde os PDFs estão "
+            "as imagens não existem — o texto abaixo permanece integral e conferível "
+            "contra os documentos, só não se mostra sozinho.</p>"
+        )
 
     notes = str(payload.get("notes") or "").strip()
     notes_block = (
@@ -387,6 +506,7 @@ def build_timeline(payload: dict[str, Any], destination: Path) -> Path:
 <body>
 <h1>Linha do tempo do capital</h1>
 <div class="sub">SIREN <code>{siren}</code> · {span}</div>
+{images_note}
 
 <div class="summary">
   <div class="stat"><b>{len(states)}</b><span>estados</span></div>
@@ -407,8 +527,9 @@ def build_timeline(payload: dict[str, Any], destination: Path) -> Path:
 <footer>
   Estados derivados dos eventos por <code>src/ledger.py</code> — nenhum saldo é digitado à mão.
   Cotações e percentuais vêm da aplicação dos eventos em ordem; a barra mostra a composição
-  de cada estado. Para conferir a leitura de cada evento contra a imagem do ato,
-  use o relatório de verificação visual.
+  de cada estado. Cada recorte é a própria página do ato, ampliada em volta da citação: é a
+  prova visual da alegação, não uma ilustração. O texto do OCR não é retratado — quando ele
+  diverge da imagem, a imagem manda.
 </footer>
 </body>
 </html>
@@ -424,13 +545,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Gera o HTML da linha do tempo.")
     parser.add_argument("results", help="results.json a visualizar")
     parser.add_argument("--output", "-o", default=None, help="HTML de saída")
+    parser.add_argument(
+        "--sem-imagens",
+        action="store_true",
+        help="não embutir recortes das páginas (arquivo muito menor)",
+    )
+    parser.add_argument(
+        "--margem",
+        type=float,
+        default=DEFAULT_MARGIN,
+        help=f"margem do recorte, em fração da página (padrão {DEFAULT_MARGIN})",
+    )
     args = parser.parse_args(argv)
 
     source = Path(args.results)
     payload = json.loads(source.read_text(encoding="utf-8"))
     destination = Path(args.output) if args.output else source.with_suffix(".timeline.html")
-    written = build_timeline(payload, destination)
-    print(f"linha do tempo escrita em: {written}")
+    written = build_timeline(
+        payload, destination, margin=args.margem, embed_images=not args.sem_imagens
+    )
+    size_kb = written.stat().st_size / 1024.0
+    print(f"linha do tempo escrita em: {written} ({size_kb:,.0f} KB)".replace(",", " "))
     return 0
 
 
