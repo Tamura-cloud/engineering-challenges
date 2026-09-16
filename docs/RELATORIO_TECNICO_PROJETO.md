@@ -213,25 +213,29 @@ Aprimorou-se o `quick_check.py` para aceitar qualquer formato de entrada de coor
 engineering-challenges-main/
 │
 ├── results.json             ← Arquivo final da submissão (validado com jsonschema)
-├── .env.example             ← Variáveis de ambiente modelo (sem chaves reais)
 ├── README.md                ← Apresentação do projeto e instruções de execução
-├── DEVLOG_AI.md             ← Diário técnico de bordo (sessões de trabalho e decisões)
-├── RELATORIO_TECNICO_PROJETO.md ← Este dossiê completo de conhecimento
-│
+├── main.py                  ← CLI: audit, benchmark, ground, triage, extract, relatórios
 ├── reconcile_timeline.py    ← Motor mestre: reconstrói, audita invariantes e gera results.json
 ├── quick_check.py           ← Utilitário rápido de conferência visual no terminal
+├── requirements.txt         ← Dependências do pipeline
 │
+├── .env.example             ← Variáveis de ambiente modelo (sem chaves reais)
 ├── .gitignore               ← Proteção contra credenciais e arquivos temporários
 ├── .gitattributes           ← Configuração de fim de linha
 ├── NOTICE.md                ← Termos legais dos dados do INPI
 │
-├── tools/                   ← Ferramentas auxiliares
+├── src/                     ← Pipeline reutilizável (14 módulos: OCR, triagem, grounding,
+│                               ledger, invariantes, relatórios, extrator opcional)
+├── docs/
+│   ├── RELATORIO_TECNICO_PROJETO.md ← Este dossiê completo de conhecimento
+│   └── DEVLOG_AI.md         ← Diário técnico, organizado por achado (não por sessão)
+├── tools/
 │   ├── bbox_viewer.py       ← Visualizador original fornecido pela Takeovers
-│   ├── inspect_act.py       ← Leitor universal de qualquer ato/página
-│   └── scratch/             ← Scripts exploratórios arquivados
-│
+│   └── __init__.py
+├── events/                  ← Eventos como dado — a leitura, separada de quem a confere
+├── controls/                ← Caso de controle SARL PAUTET (SIREN 820561470)
 ├── challenges/              ← Briefings originais da avaliação
-└── data/                    ← Corpus de dados (PDFs e OCRs da Archean e outras empresas)
+└── data/                    ← Corpus de terceiros (não versionado: tamanho e licença)
 ```
 
 ---

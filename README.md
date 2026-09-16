@@ -141,7 +141,7 @@ python quick_check.py --doc 4 --page 3 --bbox [0.0499, 0.1685, 0.9479, 0.2007]
 
 ## 6. Environment & Credentials Disclosure
 
-* As required by the briefing, this submission includes a **`.env.example`** naming every variable the code reads, with no values in it.
+* As required by the briefing, this submission includes a **`.env.example`** naming every variable the code reads, with **no secrets in it**. The values it shows are the pipeline's own defaults — a reader can see what the code uses, and which variables are worth overriding, without any key being present.
 * **The submitted `results.json` requires no keys at all.** It is produced locally by `reconcile_timeline.py`, and every verification command below runs offline. The brief explicitly notes this is *"a legitimate and interesting answer"*.
 * The repository also contains an **optional** semantic extractor (`src/extractor_llm.py`) that calls a DeepSeek endpoint through the OpenAI-compatible SDK. It is **not** on the path that produced the submitted artefact, its output is gated behind the same grounding and invariant checks as everything else, and it stays disabled unless `DEEPSEEK_API_KEY` is set — `python main.py --offline` exercises the full pipeline without it.
 
