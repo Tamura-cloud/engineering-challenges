@@ -72,8 +72,8 @@ definição do próprio brief — `capital_timeline[]` é *"the state of the cap
 those events"* — e foi assim que apareceu um estado datado de `2005-05-17` cujas causas
 declaradas eram todas de `2005-08-16`.
 
-O entregável não ficou pior por causa disso. Ficou mais honesto: **81/82 invariantes**, com a
-única falha nomeada, em vez de um número bonito e uma descrição falsa.
+O entregável não ficou pior por causa disso. Ficou mais honesto: **94/96 invariantes**, com as
+duas falhas nomeadas, em vez de um número bonito e uma descrição falsa.
 
 ---
 
@@ -96,8 +96,8 @@ pelas próprias verificações, que é exatamente para isso que elas existem.
 
 ### 3. Pipeline de Reconciliação e Validação de Schema
 * Implementação do motor `reconcile_timeline.py`, responsável por:
-  * Extrair 22 eventos com grounding estrito (`inpi_id`, `page`, `bbox` normalizado `0-1`, `snippet`);
-  * Construir a `capital_timeline` cronológica em 6 estados consolidados;
-  * Testar e aprovar 100% dos 3 invariantes algébricos;
+  * Extrair 31 eventos com grounding estrito (`inpi_id`, `page`, `bbox` normalizado `0-1`, `snippet`);
+  * Construir a `capital_timeline` cronológica em 9 estados consolidados;
+  * Testar os 9 invariantes algébricos (o único que falha é o #5, o gap do BLANCO — declarado);
   * Validar a saída final contra o JSON Schema oficial (`challenges/actes/schema/results.schema.json`) e gerar o `results.json` na raiz do projeto.
 
