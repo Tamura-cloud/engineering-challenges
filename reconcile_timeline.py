@@ -135,14 +135,36 @@ def build_events():
         },
 
         # 3. Cessão das ações dos investidores Guellati/Leroux/Roujean (2005-08-16 / AGE 2005-07-22, Doc 3)
+        #
+        # Uma transferência por cessionário, e não uma só com os dois nomes numa string:
+        # um destino composto não casa com titular nenhum do estado, e o invariante 8 não
+        # consegue conferir o movimento. Os valores 648 e 482 são diferença entre a
+        # repartição documentada (803 / 637) e as posições da constituição (155 / 155) —
+        # somam os 1.130 que o ato descreve como 'la totalité des actions détenues'.
         {
-            "event_id": "evt_2005-08-16_transfer_exit_investors",
+            "event_id": "evt_2005-08-16_transfer_to_blanco",
             "event_code": "SHAREHOLDER_SHARE_TRANSFER",
             "event_date": "2005-08-16",
             "payload": {
                 "from_name": "Malik GUELLATI, Christophe LEROUX, Marielle ROUJEAN",
-                "to_name": "Antonio BLANCO, Xavier AUMONT",
-                "shares": 1130
+                "to_name": "Antonio BLANCO MARINA",
+                "shares": 648
+            },
+            "source": {
+                "inpi_id": "63e9593b8be6eb9f9d257ec2",
+                "page": 6,
+                "bbox": [0.1052, 0.6538, 0.8721, 0.6988],
+                "snippet": "L'assemblée générale, après avoir pris connaissance d’un protocole de cession de la totalité des actions détenues par Messieurs Malik GUELLATI, Christophe LEROUX et Madame Marielle ROUJEAN, associés d'ARCHEAN TECHNOLOGIES, approuve la dérogation à l’article 15 des"
+            }
+        },
+        {
+            "event_id": "evt_2005-08-16_transfer_to_aumont",
+            "event_code": "SHAREHOLDER_SHARE_TRANSFER",
+            "event_date": "2005-08-16",
+            "payload": {
+                "from_name": "Malik GUELLATI, Christophe LEROUX, Marielle ROUJEAN",
+                "to_name": "Xavier AUMONT",
+                "shares": 482
             },
             "source": {
                 "inpi_id": "63e9593b8be6eb9f9d257ec2",
@@ -202,7 +224,18 @@ def build_events():
             "payload": {
                 "amount_eur": 50000.0,
                 "capital_after_eur": 200000.0,
-                "method": "numeraire"
+                "method": "numeraire",
+                # A 3ª Resolução do MESMO ato (página 3) reserva as 500 ações novas
+                # nominalmente: 'Pour 330 actions' a AUMONT, 'Pour 150 actions' a
+                # BLANCO e 'Pour 20 actions' a GICQUEL — 330+150+20 = 500 exatas.
+                # Estão aqui porque é o que permite à MÁQUINA decidir a leitura de
+                # 2005: só a base 803/637 fecha com esta repartição. Sem este campo,
+                # a decisão voltaria a depender de quem lê.
+                "allocation": {
+                    "Xavier AUMONT": 330,
+                    "Antonio BLANCO MARINA": 150,
+                    "Franck GICQUEL": 20
+                }
             },
             "source": {
                 "inpi_id": "63e9593b8be6eb9f9d257ec7",
@@ -643,15 +676,15 @@ def build_timeline():
                     "name": "Antonio BLANCO MARINA",
                     "siren": None,
                     "kind": "PERSON",
-                    "shares": 823,
-                    "pct": 54.87
+                    "shares": 803,
+                    "pct": 53.53
                 },
                 {
                     "name": "Xavier AUMONT",
                     "siren": None,
                     "kind": "PERSON",
-                    "shares": 617,
-                    "pct": 41.13
+                    "shares": 637,
+                    "pct": 42.47
                 },
                 {
                     "name": "Franck GICQUEL",
@@ -662,7 +695,8 @@ def build_timeline():
                 }
             ],
             "caused_by": [
-                "evt_2005-08-16_transfer_exit_investors",
+                "evt_2005-08-16_transfer_to_blanco",
+                "evt_2005-08-16_transfer_to_aumont",
                 "evt_2005-08-16_exit_guellati",
                 "evt_2005-08-16_exit_leroux",
                 "evt_2005-08-16_exit_roujean"
@@ -885,23 +919,22 @@ def build_timeline():
 
 NOTES = (
     "Lacunas e contradições declaradas de propósito (o BRIEF pede o que não foi resolvido). "
-    "(1) CONTRADIÇÃO DOCUMENTAL ABERTA, e esta timeline NÃO a resolve. Dois documentos legíveis discordam de 20 ações. "
-    "(a) O ato de 2006-01-04 (inpi_id 63e9593b8be6eb9f9d257ec2, página 6) dá a 'nouvelle répartition' do trespasse de "
-    "16/08/2005 como 823 ações para Antonio BLANCO (54,87%) e 617 para Xavier AUMONT (41,13%) — e afirma que ela "
-    "'est conforme au registre des mouvements de titres et l'emporte sur celle indiquée dans le protocole, qui "
-    "contient une erreur'. (b) A folha de presença da AGE de 20/10/2006 (inpi_id 63e9593b8be6eb9f9d257ec7, página "
-    "6), lida na IMAGEM renderizada, traz 803 para BLANCO e 637 para AUMONT nas duas colunas, e diz 'Certifiée "
-    "sincère et véritable'. As duas somam 1.500 com GICQUEL, então nenhum invariante de fechamento distingue. "
-    "NÃO é erro de OCR: os dois pares foram conferidos na imagem. Se as duas estiverem certas, houve um movimento "
-    "de 20 ações entre 16/08/2005 e 20/10/2006 que nenhum ato documenta. (c) A LISTA DE SUBSCRIÇÃO DESEMPATA a "
-    "favor de 803/637: a 3ª Resolução do ato de 2007-02-20 reserva as 500 ações novas em 'Pour 330 actions' a "
-    "AUMONT, 'Pour 150 actions' a BLANCO e 'Pour 20 actions' a GICQUEL — e 330+150+20 = 500 exatamente. Só a base "
-    "803/637 fecha com o estado de 2006-10-20: 803+150 = 953; 637+330-225 = 742; 60+20 = 80. Com a base 823/617, "
-    "BLANCO terminaria em 973 e AUMONT em 722, contra os 953/742 deste arquivo. (d) O QUE ESTA TIMELINE FAZ — "
-    "mantém 823/617 em 2005-08-16, que é o valor do ato daquela data, e o leitor encontrará aí uma incoerência "
-    "aritmética de 20 ações com o estado seguinte. Ela está declarada em vez de silenciada. Próximo passo nomeado: "
-    "ou se adota 803/637 desde a origem, tratando 823/617 como erro do registre, ou se emite o movimento de 20 "
-    "ações — com a declaração de que não há documento para ele. "
+    "(1) DUAS FONTES DISCORDAM, E É UMA REGRA QUE RESOLVE — não o gosto de quem lê. (a) O ato de 2006-01-04 "
+    "(inpi_id 63e9593b8be6eb9f9d257ec2, página 6) dá a 'nouvelle répartition' do trespasse de 16/08/2005 como 823 "
+    "ações para Antonio BLANCO (54,87%) e 617 para Xavier AUMONT (41,13%), invocando o 'registre des mouvements de "
+    "titres'. (b) A folha de presença da AGE de 20/10/2006 (inpi_id 63e9593b8be6eb9f9d257ec7, página 6), lida na "
+    "IMAGEM renderizada, traz 803 e 637 nas duas colunas, com a menção 'Certifiée sincère et véritable'. Não é erro "
+    "de OCR: os dois pares foram conferidos na imagem. (c) A REGRA APLICADA, declarada aqui para poder ser refutada: "
+    "quando duas leituras documentadas satisfazem o mesmo invariante de fechamento — ambas somam 1.500 com GICQUEL — "
+    "adota-se aquela sob a qual a CADEIA SEGUINTE fecha usando apenas movimentos documentados. A 3ª Resolução do ato "
+    "de 2007-02-20 reserva as 500 ações novas em 'Pour 330 actions' a AUMONT, 'Pour 150 actions' a BLANCO e 'Pour 20 "
+    "actions' a GICQUEL, e 330+150+20 = 500 exatamente. Só a base 803/637 fecha com o estado de 2006-10-20: "
+    "803+150 = 953; 637+330-225 = 742 (225 cedidas a CAPGRAS); 60+20 = 80. Com a base 823/617, BLANCO terminaria em "
+    "973 e AUMONT em 722 — a leitura 823/617 exigiria um movimento de 20 ações que nenhum ato documenta. A timeline "
+    "adota 803/637 em 2005-08-16. (d) O QUE **NÃO** SE PODE AFIRMAR COM OS DADOS DISPONIBILIZADOS: por que as duas "
+    "fontes diferem. Se houve um trespasse de 20 ações entre 16/08/2005 e 20/10/2006, ou se o ato de 2006-01-04 "
+    "transcreveu errado o registre, os documentos fornecidos não permitem decidir. O que se afirma é apenas qual "
+    "leitura é compatível com a cadeia documentada — e essa é a única afirmação que a evidência sustenta. "
     "(2) As saídas dos sócios pessoa física em 2008 NÃO são indocumentadas — elas estavam fora da pasta da Archean. "
     "Os atos da própria HADEAN registram os aportes: Xavier AUMONT contribuiu 742 ações da ARCHEAN, Franck GICQUEL 80 "
     "(inpi_id 63f0a89c7a07a2434c069135, páginas 5 e 6, na constituição da HADEAN em 2007-09-18) e Michel CAPGRAS 225 "
@@ -950,7 +983,17 @@ NOTES = (
     " Por consequência, a ENTRADA dos três é emitida como evento-consequência (evt_2005-05-17_entry_souscripteurs), "
     "com a mesma fonte do aumento — a spec do próprio desafio define que ações de consequência assim são "
     "derivadas no momento da projeção, não lidas: o ato não diz 'GUELLATI entrou', diz que 1.130 ações novas "
-    "foram criadas."
+    "foram criadas. "
+    "(8) O INVARIANTE 8 ACUSA A TRANSIÇÃO DE 2008, e a acusação é correta. Ele confere, transição a transição, "
+    "se a variação de cada titular bate com os movimentos quantificados nos eventos. Passa em todas as "
+    "transições de 2004 até 2008-04-18 — inclusive na de 2006, que é a que decide a contradição do item (1). E "
+    "falha em 2008-04-18 -> 2008-06-27: a HADEAN varia +216.194 onde os eventos documentam +200.000. A causa é "
+    "de MODELAGEM, não de leitura: a consolidação de 2008 está representada por uma entrada única de 200.000 "
+    "ações na HADEAN, e não pelos movimentos que de fato a compõem — o desdobramento 100:1 (ausente do payload "
+    "do CAPITAL_DUAL_CLASS), a absorção dos 95.300 títulos de BLANCO e as subscrições das Ações A e B "
+    "(17.241 + 150.861). Só reconstruindo esses eventos a transição fica verificável. Enquanto não for feito, o "
+    "invariante aponta o ponto fraco em vez de deixá-lo passar — e a absorção dos 95.300 títulos de BLANCO é o "
+    "mesmo fato do item (2), para o qual não há documento. "
 )
 
 

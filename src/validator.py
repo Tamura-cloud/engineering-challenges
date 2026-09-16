@@ -277,6 +277,101 @@ def check_state_vs_events(
     return checks
 
 
+def check_holder_flow(
+    timeline: Sequence[dict[str, Any]],
+    events: Sequence[dict[str, Any]],
+) -> list[Check]:
+    """Invariante 8: onde um movimento tem número, o saldo do titular tem de bater.
+
+    É a forma **executável** de uma regra de decisão: quando dois documentos dão
+    leituras diferentes que fecham o mesmo invariante total, vale aquela sob a
+    qual a cadeia seguinte fecha com movimentos documentados. Sem esta checagem
+    essa regra seria prosa — e prosa não decide nada quando outra pessoa roda o
+    programa.
+
+    Só movimentos quantificados contam: transferências e alocações de aumento.
+    SHAREHOLDER_ENTRY/END são **conseqüência**, não aritmética — a spec do desafio
+    diz que capturam 'the consequence', sendo o mecanismo outro evento. Uma
+    entrada só soma quando nenhum mecanismo do mesmo intervalo já creditou aquele
+    titular; sem isso, o par transferência+entrada contaria em dobro.
+
+    Intervalo sem nenhum movimento quantificado é declarado **não verificável por
+    esta via**, e não aprovado.
+    """
+    checks: list[Check] = []
+    ordered = sorted(
+        (state for state in timeline if state.get("as_of")),
+        key=lambda state: str(state["as_of"]),
+    )
+
+    for previous, current in zip(ordered, ordered[1:]):
+        low, high = str(previous["as_of"]), str(current["as_of"])
+        scope = f"{low} -> {high}"
+        gap = [
+            event
+            for event in events
+            if low < str(event.get("event_date") or "") <= high
+        ]
+
+        expected: dict[str, float] = {}
+        credited: set[str] = set()
+        for event in gap:
+            payload = event.get("payload") or {}
+            code = str(event.get("event_code") or "")
+            shares = payload.get("shares")
+            if code == "SHAREHOLDER_SHARE_TRANSFER" and isinstance(shares, (int, float)):
+                source = str(payload.get("from_name") or "").strip()
+                target = str(payload.get("to_name") or "").strip()
+                if source:
+                    expected[source] = expected.get(source, 0.0) - float(shares)
+                if target:
+                    expected[target] = expected.get(target, 0.0) + float(shares)
+                    credited.add(target)
+            elif code == "CAPITAL_INCREASE":
+                for name, value in (payload.get("allocation") or {}).items():
+                    if isinstance(value, (int, float)):
+                        key = str(name)
+                        expected[key] = expected.get(key, 0.0) + float(value)
+                        credited.add(key)
+        for event in gap:
+            if str(event.get("event_code") or "") != "SHAREHOLDER_ENTRY":
+                continue
+            payload = event.get("payload") or {}
+            name = str(payload.get("holder_name") or "").strip()
+            shares = payload.get("shares")
+            if name and isinstance(shares, (int, float)) and name not in credited:
+                expected[name] = expected.get(name, 0.0) + float(shares)
+
+        if not expected:
+            checks.append(
+                Check(
+                    "Invariante 8 (Fluxo por titular)",
+                    scope,
+                    True,
+                    "nenhum movimento quantificado no intervalo — não verificável por esta via",
+                )
+            )
+            continue
+
+        before = _shares_map(previous)
+        after = _shares_map(current)
+        problems: list[str] = []
+        for name, delta in sorted(expected.items()):
+            if abs(delta) < 1e-9:
+                continue
+            actual = after.get(name, 0.0) - before.get(name, 0.0)
+            if abs(actual - delta) > 1e-6:
+                problems.append(f"{name}: esperado {delta:+,.0f}, obtido {actual:+,.0f}")
+        detail = (
+            "; ".join(problems)
+            if problems
+            else f"{len(expected)} titular(es) conferem com os movimentos documentados"
+        )
+        checks.append(Check("Invariante 8 (Fluxo por titular)", scope, not problems, detail))
+
+    return checks
+
+
 def verify_algebraic_invariants(
     timeline: Sequence[dict[str, Any]],
 ) -> tuple[bool, list[Check]]:
@@ -346,6 +441,7 @@ def audit(payload: dict[str, Any]) -> tuple[bool, list[Check], list[str]]:
     checks.extend(check_holder_continuity(timeline, events))
     checks.extend(check_event_vs_deposit(payload))
     checks.extend(check_state_vs_events(timeline, events))
+    checks.extend(check_holder_flow(timeline, events))
 
     algebra_ok = all(check.passed for check in checks)
     schema_ok, errors = validate_schema(payload, siren=str(payload.get("siren") or SUBJECT_SIREN))
