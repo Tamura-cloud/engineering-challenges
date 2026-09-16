@@ -28,7 +28,16 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from src import config, grounding, ocr_audit, pipeline, validator
+from src import (
+    config,
+    dossier,
+    events_file,
+    grounding,
+    ocr_audit,
+    pipeline,
+    report_html,
+    validator,
+)
 from src.ocr_loader import list_documents, list_sirens, summarize
 from src.prefilter import DEFAULT_MIN_SCORE, triage
 
@@ -60,6 +69,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="audita um results.json existente: invariantes algébricos + schema",
     )
     parser.add_argument("--triage", action="store_true", help="mostra a triagem de páginas e não chama a API")
+    parser.add_argument(
+        "--events",
+        metavar="ARQUIVO",
+        help="arquivo de eventos (JSON) de uma empresa; gera o results_<siren>.json",
+    )
+    parser.add_argument(
+        "--report-html",
+        metavar="RESULTS",
+        help="gera o HTML de verificação visual (imagem + caixa + alegação) de um results.json",
+    )
     parser.add_argument(
         "--ocr-errors",
         action="store_true",
@@ -146,6 +165,60 @@ def _cmd_triage(siren: str, kind: str, min_score: int) -> int:
     return EXIT_OK
 
 
+def _cmd_report(results_path: Path, output: str | None) -> int:
+    """Gera o HTML de verificação visual a partir de um results.json."""
+    import json
+
+    if not results_path.is_file():
+        print(f"arquivo não encontrado: {results_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    siren = str(payload.get("siren") or "desconhecido")
+    destination = (
+        Path(output) if output else config.REPO_ROOT / "reports" / f"verificacao_{siren}.html"
+    )
+    written = report_html.build_report(payload, destination)
+    print(f"{len(payload.get('events') or [])} alegações renderizadas")
+    print(f"HTML escrito em: {written}")
+    return EXIT_OK
+
+
+def _cmd_events(events_path: Path, output: str | None, min_score: float) -> int:
+    """Gera o results_<siren>.json a partir de um arquivo de eventos.
+
+    Este é o caminho genérico: o arquivo de eventos carrega apenas as alegações
+    e as citações; a bbox, a timeline e os totais são todos calculados aqui.
+    """
+    if not events_path.is_file():
+        print(f"arquivo de eventos não encontrado: {events_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    outcome = dossier.build(events_path, min_score=min_score)
+    print(events_file.render_report(outcome.anchored))
+    print()
+    print(dossier.render(outcome))
+
+    if not outcome.anchored.events:
+        print("\nnenhum evento ancorado — nada a escrever.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    destination = (
+        Path(output) if output else config.REPO_ROOT / f"results_{outcome.anchored.siren}.json"
+    )
+    if destination.resolve() == config.RESULTS_PATH.resolve():
+        print(
+            "\nRECUSADO: o destino é o results.json da raiz, que é o artefato de entrega.\n"
+            "Use --output com outro nome.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    written = dossier.write(outcome.payload, destination)
+    print(f"\nArquivo escrito em: {written}")
+    return EXIT_OK
+
+
 def _cmd_ocr_errors(siren: str, kind: str, reference: str | None) -> int:
     """Aponta erros do OCR. Com ``--benchmark``, restringe às páginas citadas."""
     import json
@@ -220,6 +293,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.audit:
         return _cmd_audit(Path(args.audit))
+
+    if args.report_html:
+        return _cmd_report(Path(args.report_html), args.output)
+
+    if args.events:
+        return _cmd_events(Path(args.events), args.output, args.ground_min_score)
 
     if not args.siren:
         parser.error("--siren é obrigatório (ou use --list-sirens / --audit)")
