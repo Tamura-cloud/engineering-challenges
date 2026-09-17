@@ -12,6 +12,8 @@
 
 This repository contains the complete historical reconstruction of the capital composition of **ARCHEAN TECHNOLOGIES (SIREN 480489707)** across its 20-year operational history (2004–2025), derived from 17 official corporate acts deposited with the French commercial registry (INPI) and 300-DPI OCR layers.
 
+The brief is explicit about the shape of the answer: *"The timeline is the one that matters. Events are how you justify it."* That is the shape of this submission — **nine capital states** are the deliverable, and the **31 grounded events** are the evidence standing under each one.
+
 ### Key Highlights:
 * **`results.json` Deliverable:** Located at repository root, fully compliant and validated against `challenges/actes/schema/results.schema.json`.
 * **31 Grounded Events:** Every corporate event carries strict provenance (`inpi_id`, `page`, normalized `bbox [x0, y0, x1, y1]`, and text `snippet`).
@@ -195,6 +197,11 @@ Those two anchors are defined in this file, so the brief's own links resolve ins
 
 **What is submitted:** `results.json` at the repository root (the Actes deliverable), plus the code
 that produced it and the code that audits it. The submitted artefact needs no API key and no network.
+
+**How it is submitted:** as a **pull request** from `feature/actes-reconstruction` into `main`, per the
+brief's ground rules — *"submission is a PR to your own repository"*. `main` holds the repository as it
+was received; the PR carries the whole reconstruction in 29 commits, so the diff *is* the work, and a
+reviewer can read it commit by commit rather than taking the result on trust.
 
 **Layout:** `src/` is the reusable pipeline (loader, pre-filter, grounding, ledger, validator,
 reports); `main.py` is the CLI; `reconcile_timeline.py` is the Archean-specific assembler behind the
