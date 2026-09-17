@@ -361,20 +361,26 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
     elsewhere_loaded = False
 
     rows: list[BenchmarkRow] = []
-    for event in reference.get("events") or []:
-        source = event.get("source") or {}
-        snippet = source.get("snippet") or ""
+
+    def ensure_elsewhere() -> None:
+        """Carrega o resto do acervo, na primeira vez que um snippet não aparece na empresa."""
+        nonlocal elsewhere, elsewhere_loaded
+        if not elsewhere_loaded:
+            elsewhere = [
+                doc
+                for other in list_sirens()
+                if other != siren
+                for doc in list_documents(other, kind)
+                if doc.has_ocr
+            ]
+            elsewhere_loaded = True
+
+    def measure(label: str, source: dict) -> BenchmarkRow:
+        """Onde a citação está no acervo, e a que distância a caixa declarada está da recalculada."""
+        snippet = str(source.get("snippet") or "")
         found = scan(primary, snippet)
         if not found:
-            if not elsewhere_loaded:
-                elsewhere = [
-                    doc
-                    for other in list_sirens()
-                    if other != siren
-                    for doc in list_documents(other, kind)
-                    if doc.has_ocr
-                ]
-                elsewhere_loaded = True
+            ensure_elsewhere()
             found = scan(elsewhere, snippet)
 
         cited_doc = str(source.get("inpi_id") or "")
@@ -398,16 +404,27 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             if match is not None and isinstance(declared, list) and len(declared) == 4:
                 delta = max(abs(a - b) for a, b in zip(match.bbox, declared))
 
-        rows.append(
-            BenchmarkRow(
-                event_id=str(event.get("event_id") or ""),
-                cited_doc=cited_doc,
-                cited_page=cited_page,
-                status=status,
-                found_docs=found,
-                bbox_delta=delta,
-            )
+        return BenchmarkRow(
+            event_id=label,
+            cited_doc=cited_doc,
+            cited_page=cited_page,
+            status=status,
+            found_docs=found,
+            bbox_delta=delta,
         )
+
+    for event in reference.get("events") or []:
+        rows.append(measure(str(event.get("event_id") or ""), event.get("source") or {}))
+
+    # As arestas do grafo carregam a mesma proveniência dos eventos e, até aqui,
+    # não tinham conferência nenhuma — e foi exatamente por isso que uma delas
+    # ficou com a caixa cortando a própria citação sem ninguém notar: o
+    # `bbox_exata` contava só os eventos, então o total fechava em 31/31 e a
+    # aresta errada não aparecia em lugar nenhum. Um campo sem checagem diverge.
+    group = reference.get("group") or {}
+    for edge in group.get("edges") or []:
+        label = f"group: {edge.get('from')} -> {edge.get('to')}"
+        rows.append(measure(label, edge.get("source") or {}))
 
     summary = {
         "total": len(rows),

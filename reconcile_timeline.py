@@ -953,7 +953,7 @@ NOTES = (
     "metade inferior dela, apontando para um trecho da página diferente de onde o texto está. Os dois tinham caixas "
     "fatiadas do evento de transferência. Corrigidos: ambos passam a citar a MESMA frase que o evento de "
     "transferência cita — a que nomeia os três cedentes e diz 'la totalité des actions détenues' — com a caixa do "
-    "trecho inteiro. O benchmark sobe de 27/31 para 31/31 exatas. Medição reproduzível: "
+    "trecho inteiro. O benchmark sobe de 27/31 para 31/31 exatas entre os eventos. Medição reproduzível: "
     "python main.py --siren 480489707 --benchmark results.json "
     "(5) Erros do OCR fornecido em páginas efetivamente citadas, todos com score alto (0.956 a 0.988) — a confiança "
     "do motor NÃO os detecta: '(37.0o0)' onde a imagem diz '(37.000)'; '5o0' em vez de '500' e '20/1O/2006' em vez de "
@@ -1002,6 +1002,15 @@ NOTES = (
     "(17.241 + 150.861). Só reconstruindo esses eventos a transição fica verificável. Enquanto não for feito, o "
     "invariante aponta o ponto fraco em vez de deixá-lo passar — e a absorção dos 95.300 títulos de BLANCO é o "
     "mesmo fato do item (2), para o qual não há documento. "
+    "(9) UMA ARESTA DO GRAFO CARREGAVA CAIXA FATIADA, e nada a conferia. O `--benchmark` iterava apenas "
+    "`events[]`, de modo que as 5 arestas do bônus nunca tinham sido medidas por coisa alguma. Medido agora: a "
+    "aresta HADEAN -> ARCHEAN TECHNOLOGIES declarava box [0.1234, 0.3965, 0.7991, 0.4307] para um trecho que "
+    "ocupa DUAS linhas — 0.1234-0.8934 e 0.1242-0.7991 — cuja união exige x1 = 0.8934. A caixa adotara a largura "
+    "da segunda linha e cortava o fim da primeira. Desvio 0.0943, corrigido para 0.0000. O benchmark passou a "
+    "medir as arestas junto com os eventos: o total sobe de 31 para 36 citações, e as 36 estão exatas. É a "
+    "terceira ocorrência do mesmo padrão aqui — campo sem conferência diverge (antes: `group` sem invariante, "
+    "resolvido pelo item 9 do validador; fontes fora da pasta do sujeito, resolvidas pela varredura do acervo "
+    "inteiro). "
 )
 
 
@@ -1052,7 +1061,7 @@ def build_group():
                 "source": {
                     "inpi_id": "63e9593b8be6eb9f9d257ec0",
                     "page": 3,
-                    "bbox": [0.1234, 0.3965, 0.7991, 0.4307],
+                    "bbox": [0.1234, 0.3965, 0.8934, 0.4307],
                     "snippet": "Il est divisé en 400 000 actions de 1 euro chacune entièrement libérées, intégralement détenues par la société HADEAN"
                 }
             },
