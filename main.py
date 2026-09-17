@@ -28,7 +28,18 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-from src import config, grounding, ocr_audit, pipeline, validator
+from src import (
+    config,
+    dossier,
+    events_file,
+    extractor_llm,
+    grounding,
+    ocr_audit,
+    pipeline,
+    report_html,
+    report_timeline,
+    validator,
+)
 from src.ocr_loader import list_documents, list_sirens, summarize
 from src.prefilter import DEFAULT_MIN_SCORE, triage
 
@@ -60,6 +71,38 @@ def _build_parser() -> argparse.ArgumentParser:
         help="audita um results.json existente: invariantes algébricos + schema",
     )
     parser.add_argument("--triage", action="store_true", help="mostra a triagem de páginas e não chama a API")
+    parser.add_argument(
+        "--events",
+        metavar="ARQUIVO",
+        help="arquivo de eventos (JSON) de uma empresa; gera o results_<siren>.json",
+    )
+    parser.add_argument(
+        "--report-html",
+        metavar="RESULTS",
+        help="gera o HTML de verificação visual (imagem + caixa + alegação) de um results.json",
+    )
+    parser.add_argument(
+        "--timeline-html",
+        metavar="RESULTS",
+        help="gera o HTML da linha do tempo (composição do capital estado a estado) de um results.json",
+    )
+    parser.add_argument(
+        "--sem-imagens",
+        action="store_true",
+        help="na linha do tempo, não embutir os recortes das páginas (arquivo bem menor)",
+    )
+    parser.add_argument(
+        "--margem",
+        type=float,
+        default=None,
+        metavar="FRAÇÃO",
+        help="margem do recorte em volta da caixa, em fração da página (padrão 0.03)",
+    )
+    parser.add_argument(
+        "--extract",
+        action="store_true",
+        help="lê o OCR de --siren pela API, propõe os eventos e gera o results_<siren>.json",
+    )
     parser.add_argument(
         "--ocr-errors",
         action="store_true",
@@ -146,6 +189,171 @@ def _cmd_triage(siren: str, kind: str, min_score: int) -> int:
     return EXIT_OK
 
 
+def _cmd_extract(
+    siren: str,
+    output: str | None,
+    kind: str,
+    min_page_score: int,
+    model: str | None,
+    min_score: float,
+) -> int:
+    """OCR -> API -> eventos candidatos -> results_<siren>.json.
+
+    O modelo propõe as alegações; o grounding, o ledger, os invariantes e o
+    schema fazem o resto. Nada que o modelo devolva entra sem passar por lá —
+    e a proposta crua fica congelada em disco para ser auditada depois.
+    """
+    import json
+
+    if not config.has_api_key():
+        print(
+            "ERRO: DEEPSEEK_API_KEY não definida.\n"
+            f"Crie {config.REPO_ROOT / '.env'} e preencha DEEPSEEK_API_KEY=<chave>.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    documents = [doc for doc in list_documents(siren, kind) if doc.has_ocr]
+    if not documents:
+        print(f"nenhum documento com OCR para a SIREN {siren}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    page_map = pipeline.build_page_map(documents, min_page_score)
+    total_pages = sum(len(pages) for pages in page_map.values())
+    print(f"{len(documents)} documentos com OCR, {total_pages} páginas enviadas à API")
+
+    extracted, notes = extractor_llm.extract_events(
+        documents, page_map=page_map, model=model or config.DEEPSEEK_MODEL
+    )
+    print(f"o modelo propôs {len(extracted)} eventos")
+    for note in notes:
+        print(f"  aviso: {note}")
+
+    spec = events_file.from_extracted(siren, extracted, kind=kind)
+    candidate = config.REPO_ROOT / "events" / f"events_{siren}_candidate.json"
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text(
+        json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    print(f"proposta congelada em: {candidate}")
+
+    outcome = dossier.build_from_spec(spec, min_score=min_score)
+    print()
+    print(events_file.render_report(outcome.anchored))
+    print()
+    print(dossier.render(outcome))
+
+    if not outcome.anchored.events:
+        print("\nnenhum evento ancorado — nada a escrever.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    destination = Path(output) if output else config.REPO_ROOT / f"results_{siren}.json"
+    if destination.resolve() == config.RESULTS_PATH.resolve():
+        print("\nRECUSADO: o destino é o artefato de entrega.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    written = dossier.write(outcome.payload, destination)
+    print(f"\nArquivo escrito em: {written}")
+    return EXIT_OK
+
+
+def _report_label(results_path: Path, siren: str) -> str:
+    """Nome-base do relatório, derivado do ARQUIVO de entrada e não só da SIREN.
+
+    Duas leituras da mesma empresa — a conferida à mão e a proposta pelo modelo —
+    têm a mesma SIREN. Nomear pela SIREN fazia a segunda sobrescrever a primeira
+    em silêncio, que é o pior tipo de perda: sem erro, sem aviso, sem rastro.
+    """
+    return results_path.stem or siren
+
+
+def _cmd_report(results_path: Path, output: str | None) -> int:
+    """Gera o HTML de verificação visual a partir de um results.json."""
+    import json
+
+    if not results_path.is_file():
+        print(f"arquivo não encontrado: {results_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    siren = str(payload.get("siren") or "desconhecido")
+    destination = (
+        Path(output)
+        if output
+        else config.REPO_ROOT / "reports" / f"verificacao_{_report_label(results_path, siren)}.html"
+    )
+    written = report_html.build_report(payload, destination)
+    print(f"{len(payload.get('events') or [])} alegações renderizadas")
+    print(f"HTML escrito em: {written}")
+    return EXIT_OK
+
+
+def _cmd_timeline(
+    results_path: Path,
+    output: str | None,
+    margin: float | None,
+    embed_images: bool,
+) -> int:
+    """Gera o HTML da linha do tempo a partir de um results.json."""
+    import json
+
+    if not results_path.is_file():
+        print(f"arquivo não encontrado: {results_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    siren = str(payload.get("siren") or "desconhecido")
+    destination = (
+        Path(output)
+        if output
+        else config.REPO_ROOT / "reports" / f"timeline_{_report_label(results_path, siren)}.html"
+    )
+    options: dict[str, object] = {"embed_images": embed_images}
+    if margin is not None:
+        options["margin"] = margin
+    written = report_timeline.build_timeline(payload, destination, **options)
+    states = len(payload.get("capital_timeline") or [])
+    size_kb = written.stat().st_size / 1024.0
+    print(f"{states} estados desenhados")
+    print(f"HTML escrito em: {written} ({size_kb:,.0f} KB)".replace(",", " "))
+    return EXIT_OK
+
+
+def _cmd_events(events_path: Path, output: str | None, min_score: float) -> int:
+    """Gera o results_<siren>.json a partir de um arquivo de eventos.
+
+    Este é o caminho genérico: o arquivo de eventos carrega apenas as alegações
+    e as citações; a bbox, a timeline e os totais são todos calculados aqui.
+    """
+    if not events_path.is_file():
+        print(f"arquivo de eventos não encontrado: {events_path}", file=sys.stderr)
+        return EXIT_FAILURE
+
+    outcome = dossier.build(events_path, min_score=min_score)
+    print(events_file.render_report(outcome.anchored))
+    print()
+    print(dossier.render(outcome))
+
+    if not outcome.anchored.events:
+        print("\nnenhum evento ancorado — nada a escrever.", file=sys.stderr)
+        return EXIT_FAILURE
+
+    destination = (
+        Path(output) if output else config.REPO_ROOT / f"results_{outcome.anchored.siren}.json"
+    )
+    if destination.resolve() == config.RESULTS_PATH.resolve():
+        print(
+            "\nRECUSADO: o destino é o results.json da raiz, que é o artefato de entrega.\n"
+            "Use --output com outro nome.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILURE
+
+    written = dossier.write(outcome.payload, destination)
+    print(f"\nArquivo escrito em: {written}")
+    return EXIT_OK
+
+
 def _cmd_ocr_errors(siren: str, kind: str, reference: str | None) -> int:
     """Aponta erros do OCR. Com ``--benchmark``, restringe às páginas citadas."""
     import json
@@ -220,6 +428,29 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.audit:
         return _cmd_audit(Path(args.audit))
+
+    if args.report_html:
+        return _cmd_report(Path(args.report_html), args.output)
+
+    if args.timeline_html:
+        return _cmd_timeline(
+            Path(args.timeline_html), args.output, args.margem, not args.sem_imagens
+        )
+
+    if args.extract:
+        if not args.siren:
+            parser.error("--extract exige --siren")
+        return _cmd_extract(
+            args.siren,
+            args.output,
+            args.kind,
+            args.min_page_score,
+            args.model,
+            args.ground_min_score,
+        )
+
+    if args.events:
+        return _cmd_events(Path(args.events), args.output, args.ground_min_score)
 
     if not args.siren:
         parser.error("--siren é obrigatório (ou use --list-sirens / --audit)")

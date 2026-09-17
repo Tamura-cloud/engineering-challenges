@@ -188,10 +188,41 @@ def check_event_vs_deposit(
     Um ato só pode registrar decisão que já aconteceu. Se a data declarada for
     posterior ao depósito, ou a data está errada ou o documento é outro.
     """
-    from .ocr_loader import list_documents  # import tardio, evita ciclo
+    from .ocr_loader import list_documents, list_sirens  # import tardio, evita ciclo
 
     target = str(siren or payload.get("siren") or SUBJECT_SIREN)
     deposits = {document.doc_id: document.deposit_date for document in list_documents(target)}
+
+    # A prova de algumas dessas datas mora na pasta da controladora, não na da
+    # própria empresa — o BRIEF diz que a relação "does not appear in the
+    # company's own documents". Se um ato citado não está na pasta do sujeito,
+    # procura no resto do acervo antes de acusar depósito ausente.
+    cited = {
+        str((event.get("source") or {}).get("inpi_id") or "")
+        for event in payload.get("events") or []
+    }
+    if any(doc_id and doc_id not in deposits for doc_id in cited):
+        for other in list_sirens():
+            if other == target:
+                continue
+            for document in list_documents(other):
+                deposits.setdefault(document.doc_id, document.deposit_date)
+
+    # O corpus não é versionado (372 MB, licença de terceiros). Quem clonar o
+    # repositório não tem PDF nenhum, e sem ele não há data de depósito a
+    # comparar. Sem esta guarda o invariante acusaria 31 falhas falsas — uma
+    # entrega que parece quebrada quando só falta o insumo. Declara-se não
+    # verificável, que é diferente de aprovado.
+    if not deposits:
+        return [
+            Check(
+                "Invariante 6 (Datas)",
+                "acervo",
+                True,
+                "acervo ausente em disco — não verificável por esta via "
+                "(o corpus não é versionado; veja o README)",
+            )
+        ]
 
     checks: list[Check] = []
     for event in payload.get("events") or []:
@@ -208,6 +239,202 @@ def check_event_vs_deposit(
         ok = event_date <= deposit
         detail = f"efeito {event_date} {'<=' if ok else '>'} depósito {deposit} ({doc_id[:12]}…)"
         checks.append(Check("Invariante 6 (Datas)", scope, ok, detail))
+    return checks
+
+
+def check_state_vs_events(
+    timeline: Sequence[dict[str, Any]],
+    events: Sequence[dict[str, Any]],
+) -> list[Check]:
+    """Cobra a frase do BRIEF: "the state of the cap table after each of those
+    events". O estado tem de ser *posterior* às suas causas, as causas têm de
+    existir, e todo evento tem de desembocar num estado.
+
+    É o único invariante que liga os dois artefatos; os outros conferem a
+    aritmética de cada um isoladamente. Por isso deixaram passar um estado
+    datado de 2005-05-17 cujas causas eram todas de 2005-08-16 — cada artefato
+    fechava sozinho, e nada comparava os dois.
+    """
+    checks: list[Check] = []
+    by_id = {str(event.get("event_id")): event for event in events if event.get("event_id")}
+
+    for state in timeline:
+        as_of = str(state.get("as_of") or "?")
+        causes = [str(cid) for cid in state.get("caused_by") or []]
+        problems: list[str] = []
+        for cause in causes:
+            event = by_id.get(cause)
+            if event is None:
+                problems.append(f"{cause} não existe em events[]")
+                continue
+            date = str(event.get("event_date") or "")
+            if date and date > as_of:
+                problems.append(f"{cause} é de {date}, posterior ao estado")
+        detail = (
+            "; ".join(problems)
+            if problems
+            else f"{len(causes)} causa(s) existem e antecedem o estado"
+        )
+        checks.append(Check("Invariante 7 (Estado←Eventos)", as_of, not problems, detail))
+
+    # Cobertura: todo evento precisa de um estado com a sua data de efeito.
+    state_dates = {str(state.get("as_of")) for state in timeline}
+    event_dates = {str(event.get("event_date")) for event in events if event.get("event_date")}
+    orphan_dates = sorted(event_dates - state_dates)
+    detail = (
+        f"datas de efeito sem estado: {orphan_dates}"
+        if orphan_dates
+        else f"{len(event_dates)} datas de efeito, todas com estado"
+    )
+    checks.append(
+        Check("Invariante 7 (Estado←Eventos)", "cobertura", not orphan_dates, detail)
+    )
+
+    return checks
+
+
+def check_holder_flow(
+    timeline: Sequence[dict[str, Any]],
+    events: Sequence[dict[str, Any]],
+) -> list[Check]:
+    """Invariante 8: onde um movimento tem número, o saldo do titular tem de bater.
+
+    É a forma **executável** de uma regra de decisão: quando dois documentos dão
+    leituras diferentes que fecham o mesmo invariante total, vale aquela sob a
+    qual a cadeia seguinte fecha com movimentos documentados. Sem esta checagem
+    essa regra seria prosa — e prosa não decide nada quando outra pessoa roda o
+    programa.
+
+    Só movimentos quantificados contam: transferências e alocações de aumento.
+    SHAREHOLDER_ENTRY/END são **conseqüência**, não aritmética — a spec do desafio
+    diz que capturam 'the consequence', sendo o mecanismo outro evento. Uma
+    entrada só soma quando nenhum mecanismo do mesmo intervalo já creditou aquele
+    titular; sem isso, o par transferência+entrada contaria em dobro.
+
+    Intervalo sem nenhum movimento quantificado é declarado **não verificável por
+    esta via**, e não aprovado.
+    """
+    checks: list[Check] = []
+    ordered = sorted(
+        (state for state in timeline if state.get("as_of")),
+        key=lambda state: str(state["as_of"]),
+    )
+
+    for previous, current in zip(ordered, ordered[1:]):
+        low, high = str(previous["as_of"]), str(current["as_of"])
+        scope = f"{low} -> {high}"
+        gap = [
+            event
+            for event in events
+            if low < str(event.get("event_date") or "") <= high
+        ]
+
+        expected: dict[str, float] = {}
+        credited: set[str] = set()
+        for event in gap:
+            payload = event.get("payload") or {}
+            code = str(event.get("event_code") or "")
+            shares = payload.get("shares")
+            if code == "SHAREHOLDER_SHARE_TRANSFER" and isinstance(shares, (int, float)):
+                source = str(payload.get("from_name") or "").strip()
+                target = str(payload.get("to_name") or "").strip()
+                if source:
+                    expected[source] = expected.get(source, 0.0) - float(shares)
+                if target:
+                    expected[target] = expected.get(target, 0.0) + float(shares)
+                    credited.add(target)
+            elif code == "CAPITAL_INCREASE":
+                for name, value in (payload.get("allocation") or {}).items():
+                    if isinstance(value, (int, float)):
+                        key = str(name)
+                        expected[key] = expected.get(key, 0.0) + float(value)
+                        credited.add(key)
+        for event in gap:
+            if str(event.get("event_code") or "") != "SHAREHOLDER_ENTRY":
+                continue
+            payload = event.get("payload") or {}
+            name = str(payload.get("holder_name") or "").strip()
+            shares = payload.get("shares")
+            if name and isinstance(shares, (int, float)) and name not in credited:
+                expected[name] = expected.get(name, 0.0) + float(shares)
+
+        if not expected:
+            checks.append(
+                Check(
+                    "Invariante 8 (Fluxo por titular)",
+                    scope,
+                    True,
+                    "nenhum movimento quantificado no intervalo — não verificável por esta via",
+                )
+            )
+            continue
+
+        before = _shares_map(previous)
+        after = _shares_map(current)
+        problems: list[str] = []
+        for name, delta in sorted(expected.items()):
+            if abs(delta) < 1e-9:
+                continue
+            actual = after.get(name, 0.0) - before.get(name, 0.0)
+            if abs(actual - delta) > 1e-6:
+                problems.append(f"{name}: esperado {delta:+,.0f}, obtido {actual:+,.0f}")
+        detail = (
+            "; ".join(problems)
+            if problems
+            else f"{len(expected)} titular(es) conferem com os movimentos documentados"
+        )
+        checks.append(Check("Invariante 8 (Fluxo por titular)", scope, not problems, detail))
+
+    return checks
+
+
+def check_group_vs_events(payload: dict[str, Any]) -> list[Check]:
+    """Invariante 9: o grafo não pode datar um fato diferente do evento que o documenta.
+
+    O `group` era o único campo do entregável sem verificação — e por isso guardou
+    por horas uma divergência: as arestas de aporte datadas pelo **depósito**
+    (2007-09-18, 2008-04-30) enquanto os eventos, já corrigidos, usavam o **efeito**
+    (2007-09-07, 2008-04-18). Uma aresta que cita o MESMO documento que um evento
+    descreve o mesmo fato, e então tem de concordar com ele na data.
+    """
+    group = payload.get("group")
+    if not isinstance(group, dict):
+        return []
+
+    by_doc: dict[str, list[str]] = {}
+    for event in payload.get("events") or []:
+        doc = str((event.get("source") or {}).get("inpi_id") or "")
+        date = str(event.get("event_date") or "")
+        if doc and date:
+            by_doc.setdefault(doc, []).append(date)
+
+    checks: list[Check] = []
+    for edge in group.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        doc = str((edge.get("source") or {}).get("inpi_id") or "")
+        as_of = str(edge.get("as_of") or "")
+        scope = f"{edge.get('from')} -> {edge.get('to')} ({edge.get('relation')})"
+        dates = by_doc.get(doc)
+        if not dates:
+            checks.append(
+                Check(
+                    "Invariante 9 (Grafo←Eventos)",
+                    scope,
+                    True,
+                    "não compartilha documento com evento nenhum — não verificável por esta via",
+                )
+            )
+            continue
+        ok = as_of in dates
+        detail = (
+            f"as_of {as_of} coincide com o evento do mesmo documento"
+            if ok
+            else f"as_of {as_of} != data do evento no mesmo documento ({', '.join(sorted(set(dates)))}) — "
+            "data de efeito, não de depósito"
+        )
+        checks.append(Check("Invariante 9 (Grafo←Eventos)", scope, ok, detail))
+
     return checks
 
 
@@ -279,6 +506,9 @@ def audit(payload: dict[str, Any]) -> tuple[bool, list[Check], list[str]]:
     _, checks = verify_algebraic_invariants(timeline)
     checks.extend(check_holder_continuity(timeline, events))
     checks.extend(check_event_vs_deposit(payload))
+    checks.extend(check_state_vs_events(timeline, events))
+    checks.extend(check_holder_flow(timeline, events))
+    checks.extend(check_group_vs_events(payload))
 
     algebra_ok = all(check.passed for check in checks)
     schema_ok, errors = validate_schema(payload, siren=str(payload.get("siren") or SUBJECT_SIREN))

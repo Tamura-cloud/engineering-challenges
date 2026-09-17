@@ -11,6 +11,11 @@ import json
 import argparse
 from pathlib import Path
 
+# Em pipe no Windows o stdout do Python sai em cp1252 e os acentos corrompem
+# ("Dispon�veis"). Força UTF-8 antes de qualquer print.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # Importa diretamente do módulo tools oficial
 try:
     import pymupdf as fitz

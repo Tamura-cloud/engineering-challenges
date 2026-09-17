@@ -58,13 +58,26 @@ RÈGLES ABSOLUES
    dépôt. Si elle est introuvable, mets null.
 5. Hors périmètre: commissaires aux comptes, dirigeants, transferts de siège,
    changements d'objet social ou de dénomination. Ignore-les.
+6. `nominal_eur` est la valeur nominale d'UNE part (ex. 10), jamais le capital.
+   Indique-la dès qu'elle apparaît dans le texte.
+7. NE CONFONDS PAS composition et NOMBRE de titres. Quand une augmentation de
+   capital attribue des titres nouveaux aux associés existants, les
+   POURCENTAGES peuvent rester identiques (ex. 51/49) alors que le NOMBRE de
+   titres change. Ce n'est PAS « aucun mouvement »: la cap table a changé.
+   Émets l'événement ET remplis `allocation` avec les titres attribués à
+   chacun. Ne conclus jamais à l'absence de mouvement au seul motif que les
+   pourcentages sont stables.
 
 CODES D'ÉVÉNEMENT AUTORISÉS
 - CAPITAL_INCREASE  : le capital social nominal augmente.
-  payload: amount_eur, capital_after_eur, method
+  payload: amount_eur, capital_after_eur, nominal_eur, method,
+           allocation — OBLIGATOIRE si des titres nouveaux sont attribués
+           nommément. C'est le nombre de titres NOUVEAUX créés pour chacun
+           (un delta), PAS le total détenu après l'opération, sous la forme
+           {"Nom Prénom": nombre_de_titres_nouveaux, ...}
   method ∈ {numeraire, incorporation de reserves, apport en nature, autre}
 - CAPITAL_DECREASE : le capital social nominal diminue.
-  payload: amount_eur, capital_after_eur, method
+  payload: amount_eur, capital_after_eur, nominal_eur, method
 - SHAREHOLDER_ENTRY : une personne entre au capital.
   payload: holder_name, shares (optionnel)
 - SHAREHOLDER_END : une personne sort totalement du capital.
@@ -87,7 +100,18 @@ FORMAT DE SORTIE — réponds UNIQUEMENT avec un objet JSON:
       "event_date": "2006-10-20",
       "page": 3,
       "quote_snippet": "extrait littéral contigu du texte OCR",
-      "payload": {"amount_eur": 50000, "capital_after_eur": 200000, "method": "numeraire"},
+      "payload": {"amount_eur": 50000, "capital_after_eur": 200000,
+                  "nominal_eur": 10, "method": "numeraire"},
+      "confidence": 0.0
+    },
+    {
+      "event_code": "CAPITAL_INCREASE",
+      "event_date": "2022-01-20",
+      "page": 3,
+      "quote_snippet": "extrait littéral contigu du texte OCR",
+      "payload": {"amount_eur": 40000, "capital_after_eur": 50000,
+                  "nominal_eur": 10, "method": "incorporation de reserves",
+                  "allocation": {"Madame A": 3000, "Monsieur B": 1000}},
       "confidence": 0.0
     }
   ],

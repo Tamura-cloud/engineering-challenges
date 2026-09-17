@@ -19,7 +19,7 @@ from typing import Any, Iterable, Sequence
 
 from . import extractor_llm, grounding, validator
 from .config import CONTEXT_MAX_CHARS_PER_PAGE, SUBJECT_SIREN
-from .ocr_loader import Document, list_documents
+from .ocr_loader import Document, list_documents, list_sirens
 from .prefilter import DEFAULT_MIN_SCORE, select_pages
 
 #: Ordem canônica de agrupamento dos estados de capital.
@@ -327,11 +327,17 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
     correção da interpretação.
 
     Para cada evento do arquivo de referência: procura o ``snippet`` no OCR de
-    todos os documentos da SIREN e compara a bbox obtida com a declarada.
+    todos os documentos da empresa e, se não achar, no resto do acervo.
+
+    A segunda passada não é conveniência. O BRIEF avisa que algumas dessas
+    relações não aparecem nos documentos da própria empresa e exigem ir olhar a
+    controladora. Quando um ato da HADEAN é a prova de uma saída na cap table da
+    Archean, uma conferência que só olhasse a pasta da Archean diria AUSENTE — e
+    estaria errada.
     """
     reference = json.loads(reference_path.read_text(encoding="utf-8"))
     siren = str(reference.get("siren") or SUBJECT_SIREN)
-    documents = list_documents(siren, kind)
+    primary = [doc for doc in list_documents(siren, kind) if doc.has_ocr]
 
     lines_cache: dict[tuple[str, int], tuple] = {}
 
@@ -343,17 +349,39 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             lines_cache[(document.doc_id, page)] = cached
         return cached
 
-    rows: list[BenchmarkRow] = []
-    for event in reference.get("events") or []:
-        source = event.get("source") or {}
-        snippet = source.get("snippet") or ""
-        found: list[str] = []
+    def scan(documents: Sequence[Document], snippet: str) -> list[str]:
+        hits: list[str] = []
         for document in documents:
-            if not document.has_ocr:
-                continue
             for page in document.ocr_pages:
                 if grounding.locate_in_lines(page_lines(document, page), snippet):
-                    found.append(f"{document.doc_id} p{page}")
+                    hits.append(f"{document.doc_id} p{page}")
+        return hits
+
+    elsewhere: list[Document] = []
+    elsewhere_loaded = False
+
+    rows: list[BenchmarkRow] = []
+
+    def ensure_elsewhere() -> None:
+        """Carrega o resto do acervo, na primeira vez que um snippet não aparece na empresa."""
+        nonlocal elsewhere, elsewhere_loaded
+        if not elsewhere_loaded:
+            elsewhere = [
+                doc
+                for other in list_sirens()
+                if other != siren
+                for doc in list_documents(other, kind)
+                if doc.has_ocr
+            ]
+            elsewhere_loaded = True
+
+    def measure(label: str, source: dict) -> BenchmarkRow:
+        """Onde a citação está no acervo, e a que distância a caixa declarada está da recalculada."""
+        snippet = str(source.get("snippet") or "")
+        found = scan(primary, snippet)
+        if not found:
+            ensure_elsewhere()
+            found = scan(elsewhere, snippet)
 
         cited_doc = str(source.get("inpi_id") or "")
         cited_page = source.get("page")
@@ -365,7 +393,9 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             status = "DOC_ERRADO"
 
         delta: float | None = None
-        document = next((d for d in documents if d.doc_id == cited_doc), None)
+        document = next(
+            (doc for doc in (primary + elsewhere) if doc.doc_id == cited_doc), None
+        )
         if status == "CITADO_OK" and document is not None:
             match = grounding.ground_document(
                 document, snippet, page=cited_page, min_score=0.0
@@ -374,16 +404,27 @@ def benchmark(reference_path: Path, kind: str = "actes") -> tuple[list[Benchmark
             if match is not None and isinstance(declared, list) and len(declared) == 4:
                 delta = max(abs(a - b) for a, b in zip(match.bbox, declared))
 
-        rows.append(
-            BenchmarkRow(
-                event_id=str(event.get("event_id") or ""),
-                cited_doc=cited_doc,
-                cited_page=cited_page,
-                status=status,
-                found_docs=found,
-                bbox_delta=delta,
-            )
+        return BenchmarkRow(
+            event_id=label,
+            cited_doc=cited_doc,
+            cited_page=cited_page,
+            status=status,
+            found_docs=found,
+            bbox_delta=delta,
         )
+
+    for event in reference.get("events") or []:
+        rows.append(measure(str(event.get("event_id") or ""), event.get("source") or {}))
+
+    # As arestas do grafo carregam a mesma proveniência dos eventos e, até aqui,
+    # não tinham conferência nenhuma — e foi exatamente por isso que uma delas
+    # ficou com a caixa cortando a própria citação sem ninguém notar: o
+    # `bbox_exata` contava só os eventos, então o total fechava em 31/31 e a
+    # aresta errada não aparecia em lugar nenhum. Um campo sem checagem diverge.
+    group = reference.get("group") or {}
+    for edge in group.get("edges") or []:
+        label = f"group: {edge.get('from')} -> {edge.get('to')}"
+        rows.append(measure(label, edge.get("source") or {}))
 
     summary = {
         "total": len(rows),

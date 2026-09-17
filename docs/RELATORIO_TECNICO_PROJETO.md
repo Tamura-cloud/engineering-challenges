@@ -85,6 +85,8 @@ Abaixo está a síntese de 20 anos de reconstituição da Archean Technologies c
   * Xavier AUMONT: 637 ações (42,47%)
   * Franck GICQUEL: 60 ações (4,00%)
   * Total: 1.500 ações de 100 € = 150.000 €.
+  * ⚠️ **Contradição entre fontes, resolvida por regra — não por escolha.** A ata do Ato 3 (2006-01-04, p. 6) dá **823 / 617**; a folha de presença certificada do Ato 4 (20/10/2006, p. 6), lida na imagem, traz **803 / 637**. As duas somam 1.500, então nenhum invariante de fechamento distingue — e não é erro de OCR. **Regra aplicada:** quando duas leituras fecham o mesmo invariante, adota-se aquela sob a qual a cadeia seguinte fecha com movimentos documentados. A lista de subscrição do Ato 4 (`Pour 330` Aumont, `Pour 150` Blanco, `Pour 20` Gicquel = 500 exatas) só fecha com a base 803/637. A timeline adota essa.
+  * **O que não se pode afirmar com os dados disponíveis:** *por que* as duas fontes diferem — se houve um trespasse de 20 ações no intervalo ou se o Ato 3 transcreveu errado o *registre*. Ver nota (1) do `results.json`.
 
 #### Estado 2: 2º Aumento de Capital e Entrada de Michel Capgras (20/10/2006 — Ato 4)
 * **Documento:** `acte_2007-02-20_63e9593b8be6eb9f9d257ec0.pdf` (Páginas 2 a 6).
@@ -138,9 +140,10 @@ O briefing enfatiza que não publica gabarito porque as verificações internas 
 1. **Ato 3 (Página 6): Erro no Protocolo de Cessão de 2005**
    * *O Documento:* A ata da AGE de 22/07/2005 declara expressamente: *«Cette répartition est conforme au registre des mouvements de titres et l'emporte sur celle indiquée dans le protocole, qui contient une erreur»*.
    * *Nossa Solução:* O pipeline adotou os números auditados pelo registro de títulos societários e confirmados na lista de presença do ato seguinte.
-2. **Ato 4 (Página 6): Rebalanceamento de 20 Cotas entre Sócios Fundadores**
-   * *O Documento:* A ata do Ato 3 apontava 823 ações para Blanco e 617 para Aumont. Porém, na folha de presença autenticada do Ato 4 (20/10/2006), Blanco comparece com 803 e Aumont com 637 (deslocamento de 20 ações).
-   * *Nossa Solução:* Identificou-se a retificação prévia ao aumento de capital de 2006, preservando a soma invariante de 1.500 ações.
+2. **Ato 4 (Página 6): Folha de Presença vs. Ata do Ato 3 — 20 Ações de Divergência**
+   * *Os Documentos:* A ata do Ato 3 (2006-01-04) dá a repartição pós-trespasse como **823** para Blanco e **617** para Aumont, invocando o *registre des mouvements de titres*. A folha de presença certificada do Ato 4 (20/10/2006), lida na imagem, traz **803** e **637** nas duas colunas. Ambos somam 1.500 com Gicquel.
+   * *O Desempate:* A lista de subscrição do Ato 4 reserva as 500 ações novas em `Pour 330 actions` (Aumont), `Pour 150` (Blanco) e `Pour 20` (Gicquel) — 330+150+20 = 500 exato. Só a base 803/637 fecha com o estado posterior (803+150 = 953; 637+330−225 = 742).
+   * *Nossa Solução:* **A regra decide, não o analista.** Adota-se a leitura sob a qual a cadeia seguinte fecha com movimentos documentados — 803/637 — e o motivo da divergência entre as duas fontes fica declarado como não afirmável. Não é erro de OCR: os dois pares foram conferidos na imagem.
 3. **Ato 15 (Página 3): Erro Tipográfico no Artigo 6 dos Estatutos**
    * *O Documento:* O texto corrido do Artigo 6 menciona: *«le capital a été augmenté de 185 759 euros pour être porté à 400 000 euros»*.
    * *A Prova Algébrica:* Se o capital era 217.241 €, somar 185.759 € resultaria em 403.000 € e não 400.000 €. A 1ª Deliberação do mesmo ato aprova expressamente *«182 759 euros»*.
@@ -210,25 +213,29 @@ Aprimorou-se o `quick_check.py` para aceitar qualquer formato de entrada de coor
 engineering-challenges-main/
 │
 ├── results.json             ← Arquivo final da submissão (validado com jsonschema)
-├── .env.example             ← Variáveis de ambiente modelo (sem chaves reais)
 ├── README.md                ← Apresentação do projeto e instruções de execução
-├── DEVLOG_AI.md             ← Diário técnico de bordo (sessões de trabalho e decisões)
-├── RELATORIO_TECNICO_PROJETO.md ← Este dossiê completo de conhecimento
-│
+├── main.py                  ← CLI: audit, benchmark, ground, triage, extract, relatórios
 ├── reconcile_timeline.py    ← Motor mestre: reconstrói, audita invariantes e gera results.json
 ├── quick_check.py           ← Utilitário rápido de conferência visual no terminal
+├── requirements.txt         ← Dependências do pipeline
 │
+├── .env.example             ← Variáveis de ambiente modelo (sem chaves reais)
 ├── .gitignore               ← Proteção contra credenciais e arquivos temporários
 ├── .gitattributes           ← Configuração de fim de linha
 ├── NOTICE.md                ← Termos legais dos dados do INPI
 │
-├── tools/                   ← Ferramentas auxiliares
+├── src/                     ← Pipeline reutilizável (14 módulos: OCR, triagem, grounding,
+│                               ledger, invariantes, relatórios, extrator opcional)
+├── docs/
+│   ├── RELATORIO_TECNICO_PROJETO.md ← Este dossiê completo de conhecimento
+│   └── DEVLOG_AI.md         ← Diário técnico, organizado por achado (não por sessão)
+├── tools/
 │   ├── bbox_viewer.py       ← Visualizador original fornecido pela Takeovers
-│   ├── inspect_act.py       ← Leitor universal de qualquer ato/página
-│   └── scratch/             ← Scripts exploratórios arquivados
-│
+│   └── __init__.py
+├── events/                  ← Eventos como dado — a leitura, separada de quem a confere
+├── controls/                ← Caso de controle SARL PAUTET (SIREN 820561470)
 ├── challenges/              ← Briefings originais da avaliação
-└── data/                    ← Corpus de dados (PDFs e OCRs da Archean e outras empresas)
+└── data/                    ← Corpus de terceiros (não versionado: tamanho e licença)
 ```
 
 ---
@@ -246,7 +253,7 @@ Para recalcular todos os invariantes, testar o fechamento de ações e gerar o `
 python reconcile_timeline.py
 ```
 *Saída esperada:*  
-`[OK Invariante 1]`, `[OK Invariante 2]`, `[OK Invariante 3]` em todos os 6 estados e `Schema Validation: SUCESSO!`.
+`[OK Invariante 1]`, `[OK Invariante 2]`, `[OK Invariante 3]` em todos os 9 estados e `Schema Validation: SUCESSO!`. O total é **94/96** — as duas falhas são nomeadas: o invariante #5 (as 953 ações de Antonio BLANCO MARINA, que nenhum ato dos dois acervos registra) e o invariante #8 (a consolidação de 2008, modelada como entrada única).
 
 ### 9.3. Inspecionar Qualquer Caixa Visualmente
 Para desenhar o retângulo vermelho em cima do documento original e abrir a imagem na tela:
@@ -265,12 +272,12 @@ python quick_check.py --doc 4 --page 3 --bbox [0.0499, 0.1685, 0.9479, 0.2007]
 Quando você for defender este projeto na entrevista técnica, siga esta estrutura narrativa de 5 minutos:
 
 1. **Abertura e Filosofia de Trabalho:**  
-   *"Não tratei o OCR como uma verdade absoluta. Em projetos de engenharia de documentos jurídicos, o OCR é apenas a camada perceptual (pixels para texto). A inteligência real esteve na construção de um motor determinístico de reconciliação contábil com invariantes de conservação de ações."*
+   *"Não tratei o OCR como uma verdade absoluta. Em projetos de engenharia de documentos jurídicos, o OCR é apenas a camada perceptual (pixels para texto). A inteligência real esteve em construir um ledger contábil com invariantes de conservação de ações — e em aceitar que as verificações apontassem contra o próprio trabalho: quando o README afirmava um método que o código não implementava, foi um invariante novo que expôs o estado com data errada. Os números da timeline são conferidos à mão contra a imagem da página; o que a máquina garante é que eles fecham, e que qualquer causa listada é anterior ao estado que ela causa."*
 2. **A Reconstrução Histórica:**  
-   *"Mapeei 20 anos da Archean Technologies em 6 grandes épocas: a fundação com 37k € em 2004, a transição por investidores temporários em 2005 (150k €), a entrada do sócio Capgras em 2006 (200k €), o split e a chegada da holding HADEAN com fundos de venture capital em 2008 (368k €), a saída dos fundos em 2017 (217k €) e o aumento por reservas em 2018 até os 400k € atuais."*
+   *"Mapeei 20 anos da Archean Technologies em 9 estados: a fundação com 37k € em 2004, o primeiro aumento para 150k € em maio de 2005, a cessão que reposicionou os fundadores em agosto de 2005, a entrada de Capgras em 2006 (200k €), os aportes dos sócios pessoa física à holding HADEAN em 2007 e 2008 — documentados na pasta da controladora, não na da Archean —, o split e a rodada de venture capital em 2008 (368k €), a saída dos fundos em 2017 (217k €) e a incorporação de reservas em 2018 até os 400k € atuais."*
 3. **O Tratamento das Incoerências:**  
-   *"Identifiquei com precisão as três contradições reais dos documentos: o erro formal no protocolo do Ato 3, o rebalanceamento de 20 cotas no Ato 4 e o erro tipográfico no corpo do Artigo 6 do Ato 15 (onde o texto cita 185.759 € mas a matemática contábil e a primeira deliberação provam que foram 182.759 €)."*
+   *"Identifiquei as contradições reais dos documentos: o erro formal no protocolo do Ato 3, a divergência de 20 ações entre a ata do Ato 3 (823/617) e a folha de presença certificada do Ato 4 (803/637), e o erro tipográfico no Artigo 6 do Ato 15, onde o texto cita 185.759 € mas a 1ª Deliberação e a aritmética provam 182.759 €. Na divergência de 20 ações eu não escolhi: apliquei uma regra — vence a leitura sob a qual a cadeia seguinte fecha usando apenas movimentos documentados — e a lista de subscrição desempatou (330+150+20 = 500)."*
 4. **Ergonomia e Segurança:**  
-   *"Construí ferramentas internas como o `quick_check.py` para permitir auditoria visual instantânea de qualquer uma das 22 caixas, e estruturei o pipeline com custo zero de API externa, eliminando qualquer risco de vazamento de credenciais conforme orientado no briefing."*
+   *"Construí ferramentas internas como o `quick_check.py` para auditoria visual instantânea, e um relatório de linha do tempo que embute o recorte da própria página ao lado de cada citação, para os 31 eventos ancorados. O pipeline não consome nenhuma API externa no caminho que produz a entrega, o que elimina qualquer risco de vazamento de credenciais conforme orientado no briefing."*
 5. **O Bônus do Grupo:**  
    *"Resolvi o bônus comprovando a relação de controle total da HADEAN (SIREN 499979540) sobre a Archean Technologies."*
