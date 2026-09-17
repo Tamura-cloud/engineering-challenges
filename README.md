@@ -4,7 +4,7 @@
 **Track:** Data / ML Engineer  
 **Candidate:** `Tamura-cloud`  
 **Detailed dossier & decision log:** [`docs/RELATORIO_TECNICO_PROJETO.md`](docs/RELATORIO_TECNICO_PROJETO.md) for the 20-year technical breakdown, and [`docs/DEVLOG_AI.md`](docs/DEVLOG_AI.md) for the findings that changed the course of the work.  
-**Walkthrough recording (≈3 min):** ⚠️ **_PENDING — paste the Loom link here before opening the PR_**
+**Walkthrough recording (3:51):** [ERICK TAMURA WALKTHROUGH — YouTube](https://www.youtube.com/watch?v=iM0S-BWTw5g) — the `--audit`, the determinism proof, live grounding, the OCR errors, and the bonus graph.
 
 ---
 
