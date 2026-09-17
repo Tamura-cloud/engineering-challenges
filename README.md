@@ -24,6 +24,22 @@ This repository contains the complete historical reconstruction of the capital c
 * **Zero External API Cost:** `results.json` is assembled by local Python and needs no paid endpoint — no network access is required to reproduce or verify the submitted artefact.
 * **How the timeline was built, stated plainly:** the nine Archean states were **typed by hand** in `reconcile_timeline.py::build_timeline()` after reading the acts, then machine-checked. They are **not** derived from the `events` array. That distinction matters and §3 spells out what it costs. The derivation engine (`src/ledger.py`) is real and is used — but on the other companies, not on the submitted file.
 
+### The bonus graph, drawn
+
+```mermaid
+flowchart LR
+    AUM["Xavier AUMONT"] -->|"742 shares · 2007-09-07"| HAD
+    GIC["Franck GICQUEL"] -->|"80 shares · 2007-09-07"| HAD
+    CAP["Michel CAPGRAS"] -->|"225 shares · 2008-04-18"| HAD
+    HAD["HADEAN · SIREN 499979540"] ==>|"100% · 2018-03-23"| ARC
+    ARC["ARCHEAN TECHNOLOGIES · SIREN 480489707"]
+    INT["ARCHEAN INTERNATIONAL"] -.->|"contract counterparty · 2005-08-16"| ARC
+```
+
+The parent did not buy Archean: the three individual shareholders **contributed their Archean shares to Hadean**, and that is what took the parent to 100%. The evidence for it sits in `data/499979540/` — **Hadean's** folder, not Archean's — which is exactly where the brief says to go and look (*"It does not stop at one hop"*). Dashed edges are the ones that are **not** shareholding: `ARCHEAN INTERNATIONAL` is the counterparty the brief warns is *"named in another's filings without owning anything"*, and it is modelled as `contract_counterparty`, not as ownership.
+
+All five edges carry their own `source` — document, page, normalised box and snippet — and all five are now measured by `--benchmark` alongside the 31 events. That is why the verification count reads **36**, not 31.
+
 ---
 
 ## 2. How to Run
